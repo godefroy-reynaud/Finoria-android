@@ -1,14 +1,15 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
-    namespace = "com.example.finoria"
+    namespace = "com.finoria"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.finoria"
+        applicationId = "com.finoria"
         minSdk = 28
         targetSdk = 35
         versionCode = 1
@@ -33,6 +34,9 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources.excludes.add("/META-INF/{AL2.0,LGPL2.1}")
+    }
 }
 
 dependencies {
@@ -48,6 +52,13 @@ dependencies {
     // Navigation and Icons
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.material.icons.extended)
+
+    // Data and Serialization
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.kotlinx.serialization.json)
+
+    // WorkManager for background tasks
+    implementation(libs.androidx.work.runtime.ktx)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
