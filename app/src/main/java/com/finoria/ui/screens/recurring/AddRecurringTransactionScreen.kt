@@ -21,19 +21,31 @@ import java.util.Locale
 @Composable
 fun AddRecurringTransactionScreen(
     viewModel: AppViewModel,
+    existingRecurring: RecurringTransaction? = null,
     onBack: () -> Unit
 ) {
-    var amount by remember { mutableStateOf(0.0) }
-    var comment by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf(TransactionCategory.OTHER) }
-    var type by remember { mutableStateOf(TransactionType.EXPENSE) }
-    var frequency by remember { mutableStateOf(RecurrenceFrequency.MONTHLY) }
-    var startDate by remember { mutableStateOf(LocalDate.now()) }
+    var amount by remember { mutableStateOf(existingRecurring?.amount ?: 0.0) }
+    var comment by remember { mutableStateOf(existingRecurring?.comment ?: "") }
+    var category by remember { mutableStateOf(existingRecurring?.category ?: TransactionCategory.OTHER) }
+    var type by remember { mutableStateOf(existingRecurring?.type ?: TransactionType.EXPENSE) }
+    var frequency by remember { mutableStateOf(existingRecurring?.frequency ?: RecurrenceFrequency.MONTHLY) }
+    var startDate by remember { mutableStateOf(existingRecurring?.startDate ?: LocalDate.now()) }
+
+    LaunchedEffect(existingRecurring) {
+        existingRecurring?.let {
+            amount = it.amount
+            comment = it.comment
+            category = it.category
+            type = it.type
+            frequency = it.frequency
+            startDate = it.startDate
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Nouvelle récurrence", fontWeight = FontWeight.Bold) },
+                title = { Text(if (existingRecurring != null) "Modifier la récurrence" else "Nouvelle récurrence", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
@@ -105,23 +117,36 @@ fun AddRecurringTransactionScreen(
             Button(
                 onClick = {
                     if (amount != 0.0) {
-                        viewModel.addRecurringTransaction(
-                            RecurringTransaction(
-                                amount = amount,
-                                comment = comment,
-                                type = type,
-                                category = category,
-                                frequency = frequency,
-                                startDate = startDate
+                        if (existingRecurring != null) {
+                            viewModel.updateRecurringTransaction(
+                                existingRecurring.copy(
+                                    amount = amount,
+                                    comment = comment,
+                                    type = type,
+                                    category = category,
+                                    frequency = frequency,
+                                    startDate = startDate
+                                )
                             )
-                        )
+                        } else {
+                            viewModel.addRecurringTransaction(
+                                RecurringTransaction(
+                                    amount = amount,
+                                    comment = comment,
+                                    type = type,
+                                    category = category,
+                                    frequency = frequency,
+                                    startDate = startDate
+                                )
+                            )
+                        }
                         onBack()
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = amount != 0.0
             ) {
-                Text("Enregistrer la récurrence")
+                Text(if (existingRecurring != null) "Enregistrer" else "Enregistrer la récurrence")
             }
             Spacer(Modifier.height(16.dp))
         }

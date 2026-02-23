@@ -3,13 +3,16 @@ package com.finoria.ui.theme
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -30,7 +33,7 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun FinoriaTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,  // Désactivé - peut causer écran noir sur certains appareils
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -45,15 +48,24 @@ fun FinoriaTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            try {
+                val window = (view.context as? Activity)?.window ?: return@SideEffect
+                window.statusBarColor = colorScheme.primary.toArgb()
+                window.navigationBarColor = colorScheme.surface.toArgb()
+                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            } catch (_: Exception) { /* Ignorer les erreurs de fenêtre */ }
         }
     }
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+        typography = Typography
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = colorScheme.background
+        ) {
+            content()
+        }
+    }
 }

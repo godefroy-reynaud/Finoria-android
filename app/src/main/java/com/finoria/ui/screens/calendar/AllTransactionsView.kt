@@ -19,7 +19,10 @@ import com.finoria.ui.utils.dayHeaderFormatted
 import java.time.LocalDate
 
 @Composable
-fun AllTransactionsView(transactions: List<Transaction>) {
+fun AllTransactionsView(
+    transactions: List<Transaction>,
+    modifier: Modifier = Modifier
+) {
     val groupedTransactions = remember(transactions) {
         transactions.filter { !it.isPotential && it.date != null }
             .groupBy { it.date!! }
@@ -27,12 +30,12 @@ fun AllTransactionsView(transactions: List<Transaction>) {
     }
 
     if (groupedTransactions.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
             Text("Aucune transaction", color = Color.Gray)
         }
     } else {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp)
         ) {
             groupedTransactions.forEach { (date, dailyTransactions) ->

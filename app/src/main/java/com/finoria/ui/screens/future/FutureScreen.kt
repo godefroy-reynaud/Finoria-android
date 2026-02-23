@@ -15,13 +15,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.finoria.ui.components.TransactionRow
 import com.finoria.viewmodel.AppViewModel
-import kotlin.collections.get
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FutureScreen(viewModel: AppViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     val transactions = uiState.transactionsByAccount[uiState.selectedAccountId] ?: emptyList()
+    var transactionToDelete by remember { mutableStateOf<com.finoria.model.Transaction?>(null) }
 
     // On filtre uniquement les transactions potentielles
     val potentialTransactions = transactions.filter { it.isPotential }
@@ -74,7 +74,13 @@ fun FutureScreen(viewModel: AppViewModel) {
                                     tint = Color(0xFF388E3C)
                                 )
                             }
-                            IconButton(onClick = { viewModel.deleteTransaction(transaction) }) {
+                            IconButton(onClick = {
+                                if (transaction.recurringTransactionId != null) {
+                                    transactionToDelete = transaction
+                                } else {
+                                    viewModel.deleteTransaction(transaction)
+                                }
+                            }) {
                                 Icon(
                                     Icons.Default.Delete,
                                     contentDescription = "Supprimer",
@@ -86,5 +92,28 @@ fun FutureScreen(viewModel: AppViewModel) {
                 }
             }
         }
+    }
+
+    transactionToDelete?.let { transaction ->
+        AlertDialog(
+            onDismissRequest = { transactionToDelete = null },
+            title = { Text("Supprimer cette transaction ?") },
+            text = {
+                Text("Cette transaction provient d'une récurrence. Elle sera supprimée mais la récurrence continuera d'en générer de nouvelles.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteTransaction(transaction)
+                    transactionToDelete = null
+                }) {
+                    Text("Supprimer", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { transactionToDelete = null }) {
+                    Text("Annuler")
+                }
+            }
+        )
     }
 }

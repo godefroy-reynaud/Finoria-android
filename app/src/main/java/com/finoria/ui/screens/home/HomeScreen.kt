@@ -23,6 +23,7 @@ import com.finoria.ui.components.StyleIconView
 import com.finoria.ui.components.TransactionRow
 import com.finoria.ui.screens.account.AddAccountSheet
 import com.finoria.viewmodel.AppViewModel
+import com.finoria.ui.navigation.Screen
 import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,6 +34,12 @@ fun HomeScreen(viewModel: AppViewModel, navController: NavController) {
     val transactions = uiState.transactionsByAccount[uiState.selectedAccountId] ?: emptyList()
 
     val totalBalance = CalculationService.totalNonPotential(transactions)
+    val monthBalance = CalculationService.totalForMonth(
+        LocalDate.now().monthValue,
+        LocalDate.now().year,
+        transactions
+    )
+    val potentialBalance = CalculationService.totalPotential(transactions)
     val context = LocalContext.current
 
     var showAddAccountSheet by remember { mutableStateOf(false) }
@@ -125,7 +132,10 @@ fun HomeScreen(viewModel: AppViewModel, navController: NavController) {
         ) {
             item {
                 Spacer(Modifier.height(8.dp))
-                BalanceHeader(totalBalance = totalBalance)
+                BalanceHeader(
+                    totalBalance = totalBalance,
+                    onClick = { navController.navigate("all_transactions") }
+                )
             }
 
             if (selectedAccount != null) {
@@ -135,11 +145,49 @@ fun HomeScreen(viewModel: AppViewModel, navController: NavController) {
                     AccountCard(
                         account = selectedAccount,
                         balance = totalBalance,
-                        onClick = { }
+                        onClick = { navController.navigate("all_transactions") }
                     )
+                }
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        QuickCard(
+                            title = "Solde du mois",
+                            amount = monthBalance,
+                            onClick = {
+                                navController.navigate("calendar_month/${LocalDate.now().year}/${LocalDate.now().monthValue}")
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        QuickCard(
+                            title = "À venir",
+                            amount = potentialBalance,
+                            onClick = { navController.navigate(Screen.Future.route) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                item {
+                    TextButton(
+                        onClick = { navController.navigate("recurring_list") },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "Récurrences${if (uiState.recurringTransactions.isNotEmpty()) " (${uiState.recurringTransactions.size})" else ""}",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(Modifier.weight(1f))
+                        Text("Gérer →")
+                    }
                 }
             } else if (!uiState.isLoading) {
                 item {
+                    com.finoria.ui.components.EmptyStateView(
+                        title = "Aucun compte",
+                        subtitle = "Créez votre premier compte pour commencer à gérer vos finances"
+                    )
                     Button(
                         onClick = { showAddAccountSheet = true },
                         modifier = Modifier.fillMaxWidth()
@@ -149,9 +197,20 @@ fun HomeScreen(viewModel: AppViewModel, navController: NavController) {
                 }
             }
 
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    Text("Raccourcis rapides", style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = { navController.navigate("add_shortcut") }) {
+                        Text("+ Ajouter")
+                    }
+                }
+            }
             if (uiState.shortcuts.isNotEmpty()) {
                 item {
-                    Text("Raccourcis rapides", style = MaterialTheme.typography.titleMedium)
                     ShortcutsGrid(
                         shortcuts = uiState.shortcuts,
                         onShortcutClick = { shortcut ->
@@ -164,6 +223,9 @@ fun HomeScreen(viewModel: AppViewModel, navController: NavController) {
                                 )
                             )
                             viewModel.showToast("Transaction rapide ajoutée !")
+                        },
+                        onShortcutLongClick = { shortcut ->
+                            navController.navigate("edit_shortcut/${shortcut.id}")
                         }
                     )
                 }

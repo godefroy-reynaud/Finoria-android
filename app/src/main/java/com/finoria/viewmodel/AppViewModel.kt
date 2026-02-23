@@ -75,6 +75,12 @@ class AppViewModel(private val dataStore: AppDataStore) : ViewModel() {
         saveState(newState)
     }
 
+    fun updateAccount(account: Account) {
+        val currentState = getCurrentAppState()
+        val newAccounts = currentState.accounts.map { if (it.id == account.id) account else it }
+        saveState(currentState.copy(accounts = newAccounts))
+    }
+
     fun deleteAccount(account: Account) {
         val currentState = getCurrentAppState()
         val newAccounts = currentState.accounts.filter { it.id != account.id }
@@ -85,6 +91,7 @@ class AppViewModel(private val dataStore: AppDataStore) : ViewModel() {
         }
         val newState = currentState.copy(
             accounts = newAccounts,
+            transactionsByAccount = currentState.transactionsByAccount - account.id.toString(),
             selectedAccountId = newSelectedId
         )
         saveState(newState)
@@ -96,6 +103,15 @@ class AppViewModel(private val dataStore: AppDataStore) : ViewModel() {
         val accountTransactions = currentState.transactionsByAccount[accountId] ?: emptyList()
         val updatedMap = currentState.transactionsByAccount.toMutableMap()
         updatedMap[accountId] = accountTransactions + transaction
+        saveState(currentState.copy(transactionsByAccount = updatedMap))
+    }
+
+    fun updateTransaction(transaction: Transaction) {
+        val currentState = getCurrentAppState()
+        val accountId = currentState.selectedAccountId ?: return
+        val accountTransactions = currentState.transactionsByAccount[accountId] ?: emptyList()
+        val updatedMap = currentState.transactionsByAccount.toMutableMap()
+        updatedMap[accountId] = accountTransactions.map { if (it.id == transaction.id) transaction else it }
         saveState(currentState.copy(transactionsByAccount = updatedMap))
     }
 
@@ -126,6 +142,40 @@ class AppViewModel(private val dataStore: AppDataStore) : ViewModel() {
         val currentState = getCurrentAppState()
         val newState = currentState.copy(recurringTransactions = currentState.recurringTransactions + recurring)
         saveState(newState)
+        processRecurrences()
+    }
+
+    fun updateRecurringTransaction(recurring: RecurringTransaction) {
+        val currentState = getCurrentAppState()
+        val accountId = currentState.selectedAccountId ?: return
+        val accountTransactions = currentState.transactionsByAccount[accountId] ?: emptyList()
+        val filteredTransactions = RecurrenceEngine.removePotentialTransactions(recurring.id, accountTransactions)
+        val updatedMap = currentState.transactionsByAccount.toMutableMap()
+        updatedMap[accountId] = filteredTransactions
+        val newRecurring = currentState.recurringTransactions.map { if (it.id == recurring.id) recurring else it }
+        saveState(currentState.copy(recurringTransactions = newRecurring, transactionsByAccount = updatedMap))
+        processRecurrences()
+    }
+
+    fun pauseRecurringTransaction(id: UUID) {
+        val currentState = getCurrentAppState()
+        val accountId = currentState.selectedAccountId ?: return
+        val accountTransactions = currentState.transactionsByAccount[accountId] ?: emptyList()
+        val filteredTransactions = RecurrenceEngine.removePotentialTransactions(id, accountTransactions)
+        val updatedMap = currentState.transactionsByAccount.toMutableMap()
+        updatedMap[accountId] = filteredTransactions
+        val newRecurring = currentState.recurringTransactions.map {
+            if (it.id == id) it.copy(isPaused = true) else it
+        }
+        saveState(currentState.copy(recurringTransactions = newRecurring, transactionsByAccount = updatedMap))
+    }
+
+    fun resumeRecurringTransaction(id: UUID) {
+        val currentState = getCurrentAppState()
+        val recurring = currentState.recurringTransactions.find { it.id == id } ?: return
+        val updatedRecurring = recurring.copy(isPaused = false, lastGeneratedDate = java.time.LocalDate.now().minusDays(1))
+        val newRecurring = currentState.recurringTransactions.map { if (it.id == id) updatedRecurring else it }
+        saveState(currentState.copy(recurringTransactions = newRecurring))
         processRecurrences()
     }
 
@@ -182,11 +232,36 @@ class AppViewModel(private val dataStore: AppDataStore) : ViewModel() {
         }
     }
 
+    fun addShortcut(shortcut: WidgetShortcut) {
+        val currentState = getCurrentAppState()
+        saveState(currentState.copy(shortcuts = currentState.shortcuts + shortcut))
+    }
+
+    fun updateShortcut(shortcut: WidgetShortcut) {
+        val currentState = getCurrentAppState()
+        val newShortcuts = currentState.shortcuts.map { if (it.id == shortcut.id) shortcut else it }
+        saveState(currentState.copy(shortcuts = newShortcuts))
+    }
+
+    fun deleteShortcut(shortcut: WidgetShortcut) {
+        val currentState = getCurrentAppState()
+        saveState(currentState.copy(shortcuts = currentState.shortcuts.filter { it.id != shortcut.id }))
+    }
+
     fun showToast(message: String) {
         _uiState.update { it.copy(toastMessage = message) }
         viewModelScope.launch {
             delay(3000)
-            _uiState.update { it.copy(toastMessage = null) }
+            _uiState.update { current -> current.copy(toastMessage = null) }
         }
+    }
+
+    fun clearToast() {
+        _uiState.update { it.copy(toastMessage = null) }
+    }
+
+    /** À appeler quand l'app revient au premier plan (LifecycleObserver) */
+    fun onAppResumed() {
+        processRecurrences()
     }
 }

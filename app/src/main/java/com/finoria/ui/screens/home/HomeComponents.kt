@@ -1,7 +1,11 @@
 package com.finoria.ui.screens.home
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -23,9 +27,15 @@ import com.finoria.ui.components.StyleIconView
 import com.finoria.ui.utils.formattedCurrency
 
 @Composable
-fun BalanceHeader(totalBalance: Double, modifier: Modifier = Modifier) {
+fun BalanceHeader(
+    totalBalance: Double,
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
+            .fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -41,6 +51,37 @@ fun BalanceHeader(totalBalance: Double, modifier: Modifier = Modifier) {
             ),
             color = if (totalBalance >= 0) Color(0xFF388E3C) else Color.Red
         )
+    }
+}
+
+@Composable
+fun QuickCard(
+    title: String,
+    amount: Double,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.Gray
+            )
+            Text(
+                text = amount.formattedCurrency(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (amount >= 0) Color(0xFF388E3C) else Color.Red
+            )
+        }
     }
 }
 
@@ -69,8 +110,13 @@ fun AccountCard(account: Account, balance: Double, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ShortcutsGrid(shortcuts: List<WidgetShortcut>, onShortcutClick: (WidgetShortcut) -> Unit) {
+fun ShortcutsGrid(
+    shortcuts: List<WidgetShortcut>,
+    onShortcutClick: (WidgetShortcut) -> Unit,
+    onShortcutLongClick: ((WidgetShortcut) -> Unit)? = null
+) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -83,7 +129,14 @@ fun ShortcutsGrid(shortcuts: List<WidgetShortcut>, onShortcutClick: (WidgetShort
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { onShortcutClick(shortcut) }
+                    .then(
+                        if (onShortcutLongClick != null) {
+                            Modifier.combinedClickable(
+                                onClick = { onShortcutClick(shortcut) },
+                                onLongClick = { onShortcutLongClick(shortcut) }
+                            )
+                        } else Modifier.clickable { onShortcutClick(shortcut) }
+                    )
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
