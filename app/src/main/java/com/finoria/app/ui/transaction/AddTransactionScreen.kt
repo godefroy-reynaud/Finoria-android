@@ -76,7 +76,7 @@ fun AddTransactionScreen(
     var category by remember {
         mutableStateOf(transactionToEdit?.category ?: TransactionCategory.OTHER)
     }
-    var isPotentiel by remember { mutableStateOf(transactionToEdit?.potentiel ?: true) }
+    var isPotentiel by remember { mutableStateOf(transactionToEdit?.potentiel ?: false) }
     var manualCategory by remember { mutableStateOf(transactionToEdit != null) }
 
     val datePickerState = rememberDatePickerState(

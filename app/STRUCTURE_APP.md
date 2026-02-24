@@ -1,7 +1,7 @@
-# 📁 STRUCTURE_APP_ANDROID.md — Architecture Technique de Finoria Android
+# 📁 STRUCTURE_APP.md — Architecture Technique de Finoria Android
 
-> **Version**: 1.1  
-> **Dernière mise à jour**: 2026-02-23  
+> **Version**: 2.0  
+> **Dernière mise à jour**: 2026-02-24  
 > **Statut**: Production-Ready, AI-Ready  
 
 Ce document est la **carte géographique** de l'application Android. Il est optimisé pour qu'un développeur ou une IA puisse comprendre le projet en une seule lecture.
@@ -12,16 +12,12 @@ Ce document est la **carte géographique** de l'application Android. Il est opti
 
 **Finoria Android** est une application de gestion de finances personnelles construite avec :
 - **Jetpack Compose** (100% déclaratif, Material 3)
-- **Architecture MAD** (Single Source of Truth via `AppViewModel`)
+- **Architecture MAD** avec **Hilt** pour l'injection de dépendances
+- **Repository Pattern** : `AccountsRepository` comme source de vérité
 - **Persistance DataStore** (JSON via kotlinx.serialization)
-- **Composition de services** (AppDataStore, RecurrenceEngine, CalculationService, CsvService)
+- **Services purs** : `RecurrenceEngine`, `CalculationService`, `CsvService`
 
-**Principe clé** : `AppViewModel` est un **orchestrateur léger**. Il ne contient aucune logique métier complexe. Il délègue aux services spécialisés et garantit la persistance + mise à jour du StateFlow après chaque mutation.
-
-Évolutions principales de la version 1.1 :
-- Scope des `RecurringTransaction` et `WidgetShortcut` par compte via `accountId`
-- Édition complète des transactions (type, date, potentiel, suppression)
-- Navigation d'édition transaction depuis Home / Calendrier / Analyses
+**Principe clé** : `MainViewModel` est un **orchestrateur léger** injecté via Hilt. Il délègue au `AccountsRepository` pour le CRUD et la persistance, et à `CalculationService` pour les calculs purs.
 
 ---
 
@@ -33,115 +29,131 @@ Pas d'abstractions inutiles. Chaque couche a un rôle clair :
 
 | Couche | Rôle | Exemple |
 |--------|------|---------|
-| **model/** | Data classes sérialisables | `Transaction`, `Account` |
-| **data/** | Persistance et I/O | `AppDataStore`, `CsvService` |
-| **domain/** | Logique métier pure, sans état | `CalculationService`, `RecurrenceEngine` |
-| **viewmodel/** | État observable + orchestration | `AppViewModel` |
+| **data/model/** | Data classes sérialisables | `Transaction`, `Account`, `TransactionManager` |
+| **data/local/** | Persistance I/O | `StorageService` |
+| **data/repository/** | CRUD + orchestration données | `AccountsRepository` |
+| **domain/service/** | Logique métier pure, sans état | `CalculationService`, `RecurrenceEngine`, `CsvService` |
+| **di/** | Configuration Hilt | `AppModule` |
+| **viewmodel/** | État observable + délégation | `MainViewModel` |
 | **ui/** | Interface Compose déclarative | `HomeScreen`, `AnalysesScreen` |
-| **utils/** | Utilitaires partagés | `DateExtensions`, `NumberExtensions` |
+| **util/** | Utilitaires partagés | `DateFormatting`, `FormatUtils` |
 
 ### 2. Single Source of Truth
 
 ```
-Composable → appelle méthode → AppViewModel → délègue au Service → saveState() → _uiState.update()
+Composable → appelle méthode → MainViewModel → AccountsRepository → updateManager() → persist()
+                                                                                    ↓
+                                                               StateFlow émet la nouvelle valeur
 ```
 
-> ⚠️ **TOUTE modification de données DOIT passer par `AppViewModel`.**
+> ⚠️ **TOUTE modification de données DOIT passer par `MainViewModel` → `AccountsRepository`.**
 
-### 3. Composition over Inheritance
+### 3. Injection de Dépendances (Hilt)
 
-`AppViewModel` orchestre 4 services indépendants :
-- `AppDataStore` : persistance DataStore
-- `RecurrenceEngine` : génération/validation des transactions récurrentes
-- `CalculationService` : tous les calculs financiers (fonctions pures)
-- `CsvService` : import/export CSV
+- `FinoriaApp.kt` : `@HiltAndroidApp`
+- `MainActivity.kt` : `@AndroidEntryPoint`
+- `MainViewModel` : `@HiltViewModel` avec `@Inject constructor`
+- `AccountsRepository` : `@Singleton` avec `@Inject constructor`
+- `StorageService` : fourni via `AppModule` (`@Provides`)
 
 ---
 
 ## 📂 Arborescence des Dossiers
 
 ```
-app/src/main/java/com/finoria/
+app/src/main/java/com/finoria/app/
 │
-├── MainActivity.kt              # Point d'entrée, LifecycleObserver
+├── FinoriaApp.kt                    # @HiltAndroidApp
+├── MainActivity.kt                  # @AndroidEntryPoint, setContent → MainScreen
 │
-├── model/                       # DONNÉES — Structures immuables
-│   ├── Account.kt               # data class + AccountStyle enum
-│   ├── AppState.kt              # État global sérialisé
-│   ├── RecurringTransaction.kt  # + RecurrenceFrequency enum
-│   ├── Transaction.kt           # data class + TransactionType enum
-│   ├── TransactionCategory.kt   # Enum catégories (StylableEnum)
-│   ├── WidgetShortcut.kt        # Raccourci + ShortcutStyle enum
-│   └── Serializers.kt           # UUID, LocalDate, Color
+├── data/
+│   ├── local/
+│   │   └── StorageService.kt       # DataStore Preferences + JSON serialization
+│   ├── model/
+│   │   ├── serializers/
+│   │   │   └── Serializers.kt      # UUID, LocalDate, Color serializers
+│   │   ├── Account.kt              # data class Account
+│   │   ├── AccountStyle.kt         # Enum styles de compte (icon, color, label)
+│   │   ├── AnalysesModels.kt       # AnalysisType enum, CategoryData
+│   │   ├── RecurrenceFrequency.kt  # DAILY, WEEKLY, MONTHLY, YEARLY
+│   │   ├── RecurringTransaction.kt # Transactions récurrentes
+│   │   ├── Transaction.kt          # data class Transaction
+│   │   ├── TransactionCategory.kt  # Enum catégories (StylableEnum) + guessFrom()
+│   │   ├── TransactionManager.kt   # Mutable container par compte
+│   │   ├── TransactionType.kt      # INCOME / EXPENSE
+│   │   └── WidgetShortcut.kt       # Raccourcis rapides
+│   └── repository/
+│       └── AccountsRepository.kt   # @Singleton, CRUD + persistance + récurrences
 │
-├── data/                        # LOGIQUE PERSISTANCE
-│   ├── AppDataStore.kt          # DataStore Preferences + JSON
-│   └── CsvService.kt            # Import/Export CSV
+├── di/
+│   └── AppModule.kt                # @Module @InstallIn(SingletonComponent)
 │
-├── domain/                      # LOGIQUE MÉTIER — Fonctions pures
-│   ├── CalculationService.kt    # Totaux, filtres, pourcentages
-│   └── RecurrenceEngine.kt      # Génération des récurrences
+├── domain/
+│   └── service/
+│       ├── CalculationService.kt   # object — Totaux, filtres, pourcentages
+│       ├── CsvService.kt           # object — Import/Export CSV via FileProvider
+│       └── RecurrenceEngine.kt     # object — Génération des récurrences
 │
-├── viewmodel/                   # ORCHESTRATION
-│   ├── AppViewModel.kt          # StateFlow<AppUiState>, mutations
-│   └── AppViewModelFactory.kt   # Factory pour ViewModel
+├── navigation/
+│   ├── FinoriaNavHost.kt           # NavHost avec toutes les routes
+│   └── Screen.kt                   # sealed class Screen + BottomNavItem enum
 │
-├── ui/                          # INTERFACE — Jetpack Compose
-│   ├── theme/
-│   │   ├── Color.kt
-│   │   ├── Theme.kt
-│   │   └── Type.kt
-│   │
-│   ├── navigation/
-│   │   ├── AppNavigation.kt     # NavHost + routes + ToastHost
-│   │   ├── BottomNavBar.kt      # 4 onglets
-│   │   └── Screen.kt            # Routes et icônes
-│   │
+├── notifications/
+│   └── WeeklyReminderWorker.kt     # WorkManager Worker pour rappels hebdo
+│
+├── ui/
+│   ├── MainScreen.kt               # Scaffold + BottomNav + FAB + Sheets
+│   ├── account/
+│   │   ├── AccountCard.kt          # Carte de compte (AccountPickerSheet)
+│   │   ├── AccountPickerSheet.kt   # Bottom sheet sélection de compte
+│   │   └── AddAccountSheet.kt      # Création/édition de compte
+│   ├── analyses/
+│   │   ├── AnalysesPieChart.kt     # Camembert Canvas (drawArc)
+│   │   ├── AnalysesScreen.kt       # Contenu analyses
+│   │   ├── AnalysesTabScreen.kt    # Tab wrapper avec TopAppBar
+│   │   ├── CategoryBreakdownRow.kt # Ligne répartition catégorie
+│   │   └── CategoryTransactionsScreen.kt  # Transactions d'une catégorie
+│   ├── calendar/
+│   │   ├── AllTransactionsScreen.kt    # Toutes transactions (standalone/embedded)
+│   │   ├── CalendarContentScreen.kt    # Contenu calendrier
+│   │   ├── CalendarTabScreen.kt        # Tab wrapper
+│   │   ├── MonthsScreen.kt            # Liste des mois d'une année
+│   │   └── TransactionsListScreen.kt  # Transactions d'un mois
 │   ├── components/
-│   │   ├── AnalysesPieChart.kt  # Camembert Canvas
-│   │   ├── CurrencyTextField.kt
-│   │   ├── EmptyStateView.kt
-│   │   ├── StyleIconView.kt
-│   │   ├── StylePickerGrid.kt
-│   │   ├── ToastHost.kt
-│   │   └── TransactionRow.kt
-│   │
-│   ├── screens/
-│   │   ├── account/
-│   │   │   └── AddAccountSheet.kt
-│   │   ├── analyses/
-│   │   │   ├── AnalysesModels.kt
-│   │   │   ├── AnalysesScreen.kt
-│   │   │   ├── CategoryBreakdownRow.kt
-│   │   │   └── CategoryTransactionsScreen.kt
-│   │   ├── calendar/
-│   │   │   ├── AllTransactionsView.kt
-│   │   │   ├── AllTransactionsFullScreen.kt
-│   │   │   ├── CalendarScreen.kt
-│   │   │   ├── MonthsView.kt
-│   │   │   ├── TransactionsListScreen.kt
-│   │   ├── future/
-│   │   │   └── FutureScreen.kt
-│   │   ├── home/
-│   │   │   ├── HomeComponents.kt
-│   │   │   └── HomeScreen.kt
-│   │   ├── recurring/
-│   │   │   ├── AddRecurringTransactionScreen.kt
-│   │   │   ├── RecurringListScreen.kt
-│   │   │   └── RecurringTransactionsGridView.kt
-│   │   ├── shortcut/
-│   │   │   └── AddShortcutScreen.kt
-│   │   └── transaction/
-│   │       └── AddTransactionScreen.kt
-│   │
-│   └── utils/
-│       ├── DateExtensions.kt
-│       ├── Modifiers.kt
-│       ├── NumberExtensions.kt
-│       └── StylableEnum.kt
+│   │   ├── CurrencyTextField.kt       # Champ montant formaté
+│   │   ├── NoAccountView.kt           # Vue "aucun compte"
+│   │   ├── StylableEnum.kt            # Interface StylableEnum
+│   │   ├── StyleIconView.kt           # Icône avec fond coloré
+│   │   ├── StylePickerGrid.kt         # Grille de sélection de style
+│   │   ├── SwipeableTransactionRow.kt # Swipe card → edit/delete underneath
+│   │   └── TransactionRow.kt          # Ligne transaction (icon + texte + montant)
+│   ├── future/
+│   │   ├── FutureTabScreen.kt         # Tab wrapper futur
+│   │   └── PotentialTransactionsScreen.kt  # Liste transactions potentielles
+│   ├── home/
+│   │   ├── CsvImportPreviewScreen.kt  # Prévisualisation import CSV + bouton retour
+│   │   ├── HomeComponents.kt          # BalanceHeader, QuickCard
+│   │   ├── HomeScreen.kt              # LazyColumn home content
+│   │   └── HomeTabScreen.kt           # Tab wrapper + TopAppBar + CSV + modales
+│   ├── recurring/
+│   │   ├── AddRecurringScreen.kt      # Formulaire récurrence
+│   │   └── RecurringGrid.kt           # Grille de récurrences
+│   ├── shortcut/
+│   │   ├── AddShortcutScreen.kt       # Formulaire raccourci
+│   │   └── ShortcutsGrid.kt           # Grille de raccourcis
+│   ├── theme/
+│   │   ├── Color.kt                   # Palette de couleurs
+│   │   ├── Theme.kt                   # Material 3 theme (light/dark)
+│   │   └── Type.kt                    # Typographie
+│   └── transaction/
+│       └── AddTransactionScreen.kt    # Formulaire transaction (ajout/édition)
 │
-└── notifications/
-    └── NotificationScheduler.kt # WorkManager + NotificationCompat
+├── util/
+│   ├── DateFormatting.kt              # Extensions : dayHeaderFormatted, shortFormatted
+│   └── FormatUtils.kt                # Extensions : formattedCurrency
+│
+└── viewmodel/
+    └── MainViewModel.kt              # @HiltViewModel, orchestrateur principal
 ```
 
 ---
@@ -152,28 +164,38 @@ app/src/main/java/com/finoria/
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     UI (Compose)                                 │
-│  HomeScreen, AnalysesScreen, CalendarScreen, etc.                │
-│  Observent AppViewModel via collectAsState()                     │
+│                       UI (Compose)                               │
+│  MainScreen, HomeTabScreen, AnalysesTabScreen, etc.              │
+│  Observent MainViewModel via collectAsStateWithLifecycle()       │
 └──────────────────────────┬──────────────────────────────────────┘
                            │ Appelle des méthodes publiques
                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                  AppViewModel (Orchestrateur)                    │
+│              MainViewModel (@HiltViewModel)                      │
 │                                                                  │
-│  StateFlow<AppUiState>                                          │
-│  accounts, transactionsByAccount, recurringTransactions, ...     │
+│  Expose StateFlow : accounts, currentTransactions,               │
+│  currentShortcuts, currentRecurring, selectedAccount...          │
 │                                                                  │
-│  Chaque méthode : 1. Muter _uiState  2. dataStore.save()         │
-└───────┬──────────┬──────────────┬───────────────┬───────────────┘
-        │          │              │               │
-        ▼          ▼              ▼               ▼
- ┌────────────┐┌──────────────┐┌──────────────┐┌───────────┐
- │ AppDataStore││ Recurrence  ││ Calculation  ││ CsvService│
- │            ││ Engine      ││ Service      ││           │
- │ save/load  ││ processAll  ││ totalFor...  ││ import/   │
- │            ││ removePot.  ││ getCategory..││ generate  │
- └─────┬──────┘└──────────────┘└──────────────┘└───────────┘
+│  Délègue au repository + CalculationService                      │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│            AccountsRepository (@Singleton)                       │
+│                                                                  │
+│  MutableStateFlow : _accounts, _transactionManagers,             │
+│  _selectedAccountId, _isInitialized                              │
+│                                                                  │
+│  updateManager() → deep copy → mutate copy → emit → persist()   │
+└───────┬──────────┬──────────────┬───────────────────────────────┘
+        │          │              │
+        ▼          ▼              ▼
+ ┌────────────┐┌──────────────┐┌──────────────┐
+ │ Storage    ││ Recurrence  ││ Calculation  │
+ │ Service    ││ Engine      ││ Service      │
+ │            ││             ││              │
+ │ save/load  ││ processAll  ││ totalFor...  │
+ └─────┬──────┘└──────────────┘└──────────────┘
        │
        ▼
  ┌────────────┐
@@ -187,16 +209,28 @@ app/src/main/java/com/finoria/
 
 ```kotlin
 // Exemple : ajouter une transaction
+// 1. UI appelle viewModel.addTransaction(transaction)
+// 2. MainViewModel récupère selectedAccountId et délègue :
 fun addTransaction(transaction: Transaction) {
-    val currentState = getCurrentAppState()
-    val updatedMap = ...
-    saveState(currentState.copy(transactionsByAccount = updatedMap))
+    val accountId = selectedAccountId.value ?: return
+    viewModelScope.launch { repository.addTransaction(accountId, transaction) }
 }
 
-private fun saveState(state: AppState) {
-    viewModelScope.launch {
-        dataStore.saveAppState(state)
-    }
+// 3. AccountsRepository.addTransaction appelle updateManager :
+suspend fun addTransaction(accountId: UUID, transaction: Transaction) {
+    updateManager(accountId) { it.addTransaction(transaction) }
+}
+
+// 4. updateManager crée un deep copy AVANT mutation (pour StateFlow detection) :
+private suspend fun updateManager(accountId: UUID, action: (TransactionManager) -> Unit) {
+    val manager = _transactionManagers.value[accountId] ?: return
+    val newManager = manager.copy(
+        transactions = manager.transactions.toMutableList(),
+        // ... deep copy des listes
+    )
+    action(newManager)  // mutation sur la copie uniquement
+    _transactionManagers.value = newMap  // StateFlow émet (old != new)
+    persist()
 }
 ```
 
@@ -207,187 +241,222 @@ private fun saveState(state: AppState) {
 ### Transaction
 
 ```kotlin
+@Serializable
 data class Transaction(
-    val id: UUID,
-    val amount: Double,           // Positif = revenu, Négatif = dépense
+    val id: @Serializable(UUIDSerializer::class) UUID = UUID.randomUUID(),
+    val amount: Double,              // Positif = revenu, Négatif = dépense
     val comment: String = "",
-    val isPotential: Boolean = false,
-    val date: LocalDate? = null,
-    val category: TransactionCategory,
-    val recurringTransactionId: UUID? = null
+    val potentiel: Boolean = false,  // Transaction future/planifiée
+    val date: @Serializable(LocalDateSerializer::class) LocalDate? = null,
+    val category: TransactionCategory = TransactionCategory.OTHER,
+    val recurringTransactionId: @Serializable(UUIDSerializer::class) UUID? = null
 )
 ```
 
 ### Account
 
 ```kotlin
+@Serializable
 data class Account(
-    val id: UUID,
+    val id: @Serializable(UUIDSerializer::class) UUID = UUID.randomUUID(),
     val name: String,
-    val detail: String,
-    val style: AccountStyle  // Enum avec icon, color, label
+    val detail: String = "",
+    val style: AccountStyle = AccountStyle.WALLET
 )
 ```
+
+### TransactionManager
+
+```kotlin
+@Serializable
+data class TransactionManager(
+    val accountName: String,
+    val transactions: MutableList<Transaction> = mutableListOf(),
+    val widgetShortcuts: MutableList<WidgetShortcut> = mutableListOf(),
+    val recurringTransactions: MutableList<RecurringTransaction> = mutableListOf()
+)
+```
+
+> **Note** : `TransactionManager` utilise des `MutableList` pour les mutations internes. Le `AccountsRepository` crée des copies profondes (deep copy via `toMutableList()`) AVANT chaque mutation pour garantir que `StateFlow` détecte les changements (comparaison par `equals()`).
 
 ### RecurringTransaction
 
 ```kotlin
+@Serializable
 data class RecurringTransaction(
-    val id: UUID,
+    val id: @Serializable(UUIDSerializer::class) UUID = UUID.randomUUID(),
     val amount: Double,
-    val comment: String,
-    val type: TransactionType,      // INCOME / EXPENSE
+    val comment: String = "",
+    val type: TransactionType,
     val category: TransactionCategory,
-    val accountId: String? = null,  // Compte propriétaire (compatibilité anciennes données)
-    val frequency: RecurrenceFrequency,  // DAILY, WEEKLY, MONTHLY, YEARLY
-    val startDate: LocalDate,
-    val lastGeneratedDate: LocalDate? = null,
+    val frequency: RecurrenceFrequency,
+    val startDate: @Serializable(LocalDateSerializer::class) LocalDate,
+    val lastGeneratedDate: @Serializable(LocalDateSerializer::class) LocalDate? = null,
     val isPaused: Boolean = false
 )
-```
-
-### AppUiState
-
-```kotlin
-data class AppUiState(
-    val accounts: List<Account>,
-    val transactionsByAccount: Map<String, List<Transaction>>,
-    val recurringTransactions: List<RecurringTransaction>,
-    val shortcuts: List<WidgetShortcut>,
-    val selectedAccountId: String?,
-    val isLoading: Boolean,
-    val toastMessage: String?
-)
-
-// Note: les écrans filtrent `recurringTransactions` et `shortcuts`
-// sur `selectedAccountId` (ou gardent les entrées legacy avec accountId = null)
 ```
 
 ---
 
 ## ⚙️ Services — Responsabilités
 
-### AppDataStore
+### StorageService (data/local/)
 
 | Méthode | Description |
 |---------|-------------|
-| `appStateFlow` | Flow qui émet l'AppState à chaque changement |
-| `saveAppState(state)` | Encode en JSON → DataStore |
+| `load()` | Charge comptes + TransactionManagers depuis DataStore (JSON) |
+| `save(accounts, managers)` | Sérialise et sauvegarde dans DataStore |
+| `loadSelectedAccountId()` | Charge l'ID du compte sélectionné |
+| `saveSelectedAccountId(id)` | Sauvegarde l'ID du compte sélectionné |
 
-### RecurrenceEngine
+### AccountsRepository (data/repository/)
 
 | Méthode | Description |
 |---------|-------------|
-| `processAll(state)` | Génère les transactions futures (<1 mois), auto-valide les passées |
+| `init()` | Charge les données + process récurrences |
+| `addAccount/updateAccount/deleteAccount` | CRUD comptes |
+| `addTransaction/updateTransaction/removeTransaction` | CRUD transactions |
+| `validateTransaction` | Marque une transaction potentielle comme validée |
+| `addShortcut/updateShortcut/removeShortcut` | CRUD raccourcis |
+| `addRecurring/updateRecurring/removeRecurring` | CRUD récurrences |
+| `togglePauseRecurring` | Pause/reprend une récurrence |
+| `importTransactions` | Import batch de transactions (CSV) |
+| `processRecurrences` | Déclenche RecurrenceEngine |
+
+### RecurrenceEngine (domain/service/)
+
+| Méthode | Description |
+|---------|-------------|
+| `processAll(accounts, managers)` | Génère les transactions futures, auto-valide les passées |
 | `removePotentialTransactions(id, transactions)` | Supprime les potentielles liées à une récurrence |
 
-### CalculationService
+### CalculationService (domain/service/)
 
 | Méthode | Description |
 |---------|-------------|
 | `totalNonPotential(transactions)` | Total des transactions validées |
 | `totalPotential(transactions)` | Total des transactions futures |
+| `monthlyChangePercentage(transactions)` | Variation mois courant vs précédent |
 | `totalForMonth(month, year, transactions)` | Total pour un mois donné |
-| `validatedTransactions(year, month, transactions)` | Filtre par année/mois |
-| `getCategoryBreakdown(transactions, type)` | Répartition par catégorie |
+| `totalForYear(year, transactions)` | Total pour une année |
+| `availableYears(transactions)` | Années avec des transactions |
+| `validatedTransactions(transactions, year, month)` | Filtre validées par période |
+| `potentialTransactions(transactions)` | Filtre les potentielles |
+| `getCategoryBreakdown(transactions, type, month, year)` | Répartition par catégorie |
 
-### CsvService
+### CsvService (domain/service/)
 
 | Méthode | Description |
 |---------|-------------|
-| `generateCsv(transactions, accountName)` | Exporte en CSV |
-| `importCsv(inputStream)` | Parse CSV → List<Transaction> |
-| `saveCsvToFile(context, content)` | Sauvegarde temporaire pour partage |
+| `generateCsv(transactions, accountName, context)` | Exporte CSV → URI FileProvider |
+| `importCsv(uri, context)` | Parse CSV → `List<Transaction>` |
 
 ---
 
 ## 🧭 Navigation
 
-### Routes Principales
+### Structure
+
+- `MainScreen.kt` : Scaffold avec `BottomNavigationBar` (4 onglets) + FAB + modales
+- `FinoriaNavHost.kt` : NavHost avec toutes les routes
+- `Screen.kt` : sealed class des routes + enum `BottomNavItem`
+
+### Routes Principales (Onglets)
 
 | Route | Screen | Description |
 |-------|--------|-------------|
-| `home` | HomeScreen | Accueil, solde, raccourcis, récurrences |
-| `analyses` | AnalysesScreen | Camembert, répartition par catégorie |
-| `calendar` | CalendarScreen | Jour / Mois / Année |
-| `future` | FutureScreen | Transactions potentielles |
+| `home` | HomeTabScreen | Accueil, solde, raccourcis, récurrences |
+| `analyses` | AnalysesTabScreen | Camembert, répartition par catégorie |
+| `calendar` | CalendarTabScreen | Historique par année / mois |
+| `future` | FutureTabScreen | Transactions potentielles |
 
-### Routes Secondaires
+### Routes Secondaires (Navigation push)
 
-| Route | Description |
-|-------|-------------|
-| `add_transaction` | Formulaire nouvelle transaction |
-| `add_recurring` | Formulaire nouvelle récurrence |
-| `edit_recurring/{id}` | Édition récurrence |
-| `add_shortcut` | Nouveau raccourci |
-| `edit_shortcut/{id}` | Édition raccourci |
-| `recurring_list` | Liste des récurrences |
-| `all_transactions` | Toutes les transactions |
-| `calendar_month/{year}/{month}` | Transactions d'un mois |
-| `category_transactions/{name}` | Transactions d'une catégorie |
-| `calendar_list/{year}/{month}` | Alias pour calendar_month |
+| Route | Screen | Description |
+|-------|--------|-------------|
+| `allTransactions` | AllTransactionsScreen | Toutes les transactions validées |
+| `potential` | PotentialTransactionsScreen | Transactions potentielles (liste) |
+| `transactions/{month}/{year}` | TransactionsListScreen | Transactions d'un mois |
+| `months/{year}` | MonthsScreen | Mois d'une année |
+| `categoryTx/{category}/{month}/{year}` | CategoryTransactionsScreen | Transactions d'une catégorie |
+
+### Modales (Bottom Sheets)
+
+| Modale | Déclencheur | Description |
+|--------|------------|-------------|
+| AddTransactionScreen | FAB (+) | Ajout/édition transaction |
+| AccountPickerSheet | Icône compte | Sélection de compte |
+| AddAccountSheet | Bouton dans Account Picker | Création/édition compte |
+| AddShortcutScreen | Bouton (+) dans ShortcutsGrid | Ajout/édition raccourci |
+| AddRecurringScreen | Bouton (+) dans RecurringGrid | Ajout/édition récurrence |
+| CsvImportPreviewScreen | Bouton import CSV | Prévisualisation + confirmation |
 
 ---
 
 ## 🔄 Logique de Récurrence
 
 > `processRecurringTransactions()` est appelé :
-> - Au **lancement** de l'app
-> - Quand l'app **revient au premier plan** (LifecycleObserver)
+> - Au **lancement** de l'app (dans `repository.init()`)
+> - Quand l'app **revient au premier plan** (`LifecycleEventEffect ON_RESUME`)
 > - Après chaque **ajout** ou **modification** de récurrence
 
 Le `RecurrenceEngine` effectue :
-1. Génère les transactions futures (< 1 mois) comme **transactions potentielles**
-2. Vérifie les doublons via `recurringTransactionId` + `date`
-3. Valide automatiquement les transactions dont la date est **aujourd'hui ou passée**
-4. Met à jour `lastGeneratedDate` pour éviter les regénérations
+1. Crée des copies profondes des managers pour éviter les conflits StateFlow
+2. Génère les transactions futures (< 1 mois) comme **transactions potentielles**
+3. Vérifie les doublons via `recurringTransactionId` + `date`
+4. Valide automatiquement les transactions dont la date est **aujourd'hui ou passée**
+5. Met à jour `lastGeneratedDate` pour éviter les regénérations
 
 ---
 
 ## 📱 Stack Technique
 
-| Composant | Technologie |
-|-----------|-------------|
-| UI Framework | Jetpack Compose (Material 3) |
-| Graphiques | Canvas API (`drawArc`) |
-| State Management | `StateFlow`, `collectAsState` |
-| Navigation | Navigation Compose |
-| Persistance | DataStore Preferences + kotlinx.serialization |
-| Notifications | WorkManager + NotificationCompat |
-| Partage | Intent.ACTION_SEND + FileProvider |
+| Composant | Technologie | Version |
+|-----------|-------------|---------|
+| Plateforme | Android 8.0+ (API 26, cible 35) | SDK 35 |
+| Langage | Kotlin | 2.0.21 |
+| UI | Jetpack Compose Material 3 | BOM 2024.12.01 |
+| Graphiques | Canvas API (`drawArc`) | — |
+| State | `StateFlow`, `collectAsStateWithLifecycle` | Lifecycle 2.8.7 |
+| Navigation | Navigation Compose | 2.8.5 |
+| DI | Hilt Android + KSP | 2.59.2 |
+| Persistance | DataStore Preferences + kotlinx.serialization | 1.1.1 / 1.7.3 |
+| Background | WorkManager | 2.10.0 |
+| Build | AGP + KSP | 9.0.1 / 2.0.21-1.0.28 |
 
 ---
 
 ## ⚠️ APIs Expérimentales
 
-Certains écrans et composants utilisent des APIs marquées comme expérimentales. Les annotations `@OptIn` suivantes sont requises :
-
-| Fichier | Annotation | API utilisée |
-|---------|------------|--------------|
-| `AllTransactionsFullScreen.kt` | `@OptIn(ExperimentalMaterial3Api::class)` | TopAppBar |
-| `RecurringListScreen.kt` | `@OptIn(ExperimentalMaterial3Api::class)` | TopAppBar |
-| `ShortcutsGrid` (HomeComponents.kt) | `@OptIn(ExperimentalFoundationApi::class)` | combinedClickable |
-
-Le `ToastHost` utilise `surfaceVariant` / `onSurfaceVariant` pour la compatibilité avec toutes les versions de Material 3.
-
-Le `QuickCard` reçoit `Modifier.weight(1f)` du parent (Row) car `weight` n'est disponible que dans `RowScope`/`ColumnScope`.
+| Composant | Annotation | API utilisée |
+|-----------|------------|--------------|
+| `MainScreen.kt` | `@OptIn(ExperimentalMaterial3Api::class)` | ModalBottomSheet, TopAppBar |
+| `HomeTabScreen.kt` | `@OptIn(ExperimentalMaterial3Api::class)` | TopAppBar, ModalBottomSheet |
+| `AllTransactionsScreen.kt` | `@OptIn(ExperimentalMaterial3Api::class)` | TopAppBar |
+| `AddTransactionScreen.kt` | `@OptIn(ExperimentalMaterial3Api::class)` | DatePicker, SegmentedButton |
+| `AddRecurringScreen.kt` | `@OptIn(ExperimentalMaterial3Api::class)` | TopAppBar |
+| `AnalysesTabScreen.kt` | `@OptIn(ExperimentalMaterial3Api::class)` | TopAppBar |
 
 ---
 
 ## 🧪 Points de Test Critiques
 
 ### Services (tests unitaires)
-1. `AppDataStore` : save/load préserve les données
+1. `StorageService` : save/load préserve les données (JSON round-trip)
 2. `RecurrenceEngine.processAll` : génère correctement, évite les doublons
-3. `CalculationService` : totaux et pourcentages corrects
+3. `CalculationService` : totaux, pourcentages, filtres corrects
 4. `CsvService` : export/import round-trip
 
-### AppViewModel (tests d'intégration)
-5. `addTransaction` → persistance + mise à jour état
+### Repository (tests d'intégration)
+5. `addTransaction` → updateManager deep copy → StateFlow émet → persist
 6. `deleteAccount` → sélection automatique du suivant
-7. `processRecurringTransactions` → génération + auto-validation
-8. `pauseRecurringTransaction` / `resumeRecurringTransaction`
+7. `processRecurrences` → deep copy → génération + auto-validation
+8. `importTransactions` → batch add → StateFlow émet
+
+### ViewModel
+9. `currentTransactions` se met à jour immédiatement après ajout
+10. `currentShortcuts` se met à jour immédiatement après ajout
 
 ---
 
-*Document généré — Finoria Android v1.0*
+*Document généré — Finoria Android v2.0 — 2026-02-24*

@@ -35,6 +35,7 @@ class MainViewModel @Inject constructor(
     val accounts: StateFlow<List<Account>> = repository.accounts
     val selectedAccountId: StateFlow<UUID?> = repository.selectedAccountId
     val transactionManagers: StateFlow<Map<UUID, TransactionManager>> = repository.transactionManagers
+    val isInitialized: StateFlow<Boolean> = repository.isInitialized
 
     val selectedAccount: StateFlow<Account?> = combine(
         accounts,

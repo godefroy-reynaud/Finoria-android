@@ -133,6 +133,7 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
                 navController = navController,
                 viewModel = viewModel,
                 onShowAddTransaction = { showAddTransaction = true },
+                onEditTransaction = { transactionToEdit = it },
                 onShowAccountPicker = { showAccountPicker = true },
                 modifier = Modifier.padding(padding)
             )

@@ -3,6 +3,7 @@ package com.finoria.app.ui.home
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -26,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.finoria.app.data.model.RecurringTransaction
+import com.finoria.app.data.model.Transaction
 import com.finoria.app.data.model.WidgetShortcut
 import com.finoria.app.domain.service.CsvService
 import com.finoria.app.ui.LocalSnackbarHostState
@@ -44,7 +46,8 @@ import kotlinx.coroutines.launch
 fun HomeTabScreen(
     viewModel: MainViewModel,
     navController: NavController,
-    onShowAccountPicker: () -> Unit
+    onShowAccountPicker: () -> Unit,
+    onEditTransaction: (Transaction) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -53,6 +56,7 @@ fun HomeTabScreen(
     val selectedAccountId by viewModel.selectedAccountId.collectAsStateWithLifecycle()
     val selectedAccount by viewModel.selectedAccount.collectAsStateWithLifecycle()
     val transactions by viewModel.currentTransactions.collectAsStateWithLifecycle()
+    val isInitialized by viewModel.isInitialized.collectAsStateWithLifecycle()
 
     // Sheet states for shortcuts and recurring editing
     var shortcutToEdit by remember { mutableStateOf<WidgetShortcut?>(null) }
@@ -60,55 +64,79 @@ fun HomeTabScreen(
     var recurringToEdit by remember { mutableStateOf<RecurringTransaction?>(null) }
     var showAddRecurring by remember { mutableStateOf(false) }
 
-    // CSV file picker
+    // CSV import preview state
+    var csvPreviewTransactions by remember { mutableStateOf<List<Transaction>?>(null) }
+
+    // CSV file picker — parse and show preview instead of direct import
     val csvPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
             val imported = CsvService.importCsv(it, context)
             if (imported.isNotEmpty()) {
-                viewModel.importTransactions(imported)
+                csvPreviewTransactions = imported
+            } else {
                 scope.launch {
-                    snackbarHostState.showSnackbar("${imported.size} transactions importées")
+                    snackbarHostState.showSnackbar("Aucune transaction trouvée dans le fichier")
                 }
             }
         }
     }
 
-    if (selectedAccountId != null) {
+    // ─── CSV Import Preview Screen ────────────────────────────────
+    if (csvPreviewTransactions != null) {
+        CsvImportPreviewScreen(
+            transactions = csvPreviewTransactions!!,
+            onConfirm = {
+                viewModel.importTransactions(csvPreviewTransactions!!)
+                val count = csvPreviewTransactions!!.size
+                csvPreviewTransactions = null
+                scope.launch {
+                    snackbarHostState.showSnackbar("$count transactions importées")
+                }
+            },
+            onDismiss = { csvPreviewTransactions = null }
+        )
+        return
+    }
+
+    if (!isInitialized) {
+        // Still loading — show nothing to avoid "no account" flash
+    } else if (selectedAccountId != null) {
         Scaffold(
             topBar = {
                 TopAppBar(
                     title = { },
                     navigationIcon = {
-                        // CSV actions
-                        IconButton(onClick = {
-                            val uri = CsvService.generateCsv(
-                                transactions,
-                                selectedAccount?.name ?: "export",
-                                context
-                            )
-                            if (uri != null) {
-                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/csv"
-                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                context.startActivity(
-                                    Intent.createChooser(shareIntent, "Exporter CSV")
+                        Row {
+                            IconButton(onClick = {
+                                val uri = CsvService.generateCsv(
+                                    transactions,
+                                    selectedAccount?.name ?: "export",
+                                    context
                                 )
-                            } else {
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("Aucune transaction à exporter")
+                                if (uri != null) {
+                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/csv"
+                                        putExtra(Intent.EXTRA_STREAM, uri)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    context.startActivity(
+                                        Intent.createChooser(shareIntent, "Exporter CSV")
+                                    )
+                                } else {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Aucune transaction à exporter")
+                                    }
                                 }
+                            }) {
+                                Icon(Icons.Default.Share, contentDescription = "Exporter CSV")
                             }
-                        }) {
-                            Icon(Icons.Default.Share, contentDescription = "Exporter CSV")
-                        }
-                        IconButton(onClick = {
-                            csvPicker.launch(arrayOf("text/csv", "text/comma-separated-values", "*/*"))
-                        }) {
-                            Icon(Icons.Default.FileDownload, contentDescription = "Importer CSV")
+                            IconButton(onClick = {
+                                csvPicker.launch(arrayOf("text/csv", "text/comma-separated-values", "*/*"))
+                            }) {
+                                Icon(Icons.Default.FileDownload, contentDescription = "Importer CSV")
+                            }
                         }
                     },
                     actions = {
@@ -122,7 +150,7 @@ fun HomeTabScreen(
             HomeScreen(
                 viewModel = viewModel,
                 navController = navController,
-                onEditTransaction = { /* handled by MainScreen modal */ },
+                onEditTransaction = onEditTransaction,
                 onEditShortcut = { shortcutToEdit = it },
                 onAddShortcut = { showAddShortcut = true },
                 onEditRecurring = { recurringToEdit = it },

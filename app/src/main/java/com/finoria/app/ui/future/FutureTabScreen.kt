@@ -1,6 +1,7 @@
 package com.finoria.app.ui.future
 
 import androidx.compose.runtime.Composable
+import com.finoria.app.data.model.Transaction
 import com.finoria.app.viewmodel.MainViewModel
 
 /**
@@ -8,7 +9,12 @@ import com.finoria.app.viewmodel.MainViewModel
  */
 @Composable
 fun FutureTabScreen(
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
+    onEditTransaction: (Transaction) -> Unit = {}
 ) {
-    PotentialTransactionsScreen(viewModel = viewModel)
+    PotentialTransactionsScreen(
+        viewModel = viewModel,
+        onEditTransaction = onEditTransaction,
+        embedded = true
+    )
 }

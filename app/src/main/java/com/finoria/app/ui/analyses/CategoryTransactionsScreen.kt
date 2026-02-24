@@ -23,8 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.finoria.app.data.model.Transaction
 import com.finoria.app.data.model.TransactionCategory
-import com.finoria.app.ui.components.TransactionRow
+import com.finoria.app.ui.components.SwipeableTransactionRow
 import com.finoria.app.util.dayHeaderFormatted
 import com.finoria.app.util.monthName
 import com.finoria.app.viewmodel.MainViewModel
@@ -40,7 +41,8 @@ fun CategoryTransactionsScreen(
     category: TransactionCategory,
     month: Int,
     year: Int,
-    navController: NavController
+    navController: NavController,
+    onEditTransaction: (Transaction) -> Unit = {}
 ) {
     val transactions by viewModel.currentTransactions.collectAsStateWithLifecycle()
 
@@ -78,7 +80,11 @@ fun CategoryTransactionsScreen(
                     )
                 }
                 items(txns, key = { it.id }) { tx ->
-                    TransactionRow(transaction = tx)
+                    SwipeableTransactionRow(
+                        transaction = tx,
+                        onEdit = onEditTransaction,
+                        onDelete = { viewModel.removeTransaction(it) }
+                    )
                 }
             }
             item { Spacer(Modifier.height(80.dp)) }

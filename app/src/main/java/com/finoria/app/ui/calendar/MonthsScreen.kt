@@ -8,9 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
@@ -84,9 +81,10 @@ fun MonthsScreen(
 }
 
 /**
- * Grille de 12 mois pour une année.
- * Réutilisé dans MonthsScreen et MonthsOverviewScreen.
+ * Grille de 12 mois pour une année — implémentée avec Column/Row (non-lazy)
+ * pour être compatible avec l'imbrication dans une LazyColumn.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MonthsGridForYear(
     viewModel: MainViewModel,
@@ -95,50 +93,62 @@ fun MonthsGridForYear(
     onMonthClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+    val months = (1..12).toList()
+    val rows = months.chunked(3)
+
+    Column(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items((1..12).toList()) { month ->
-            val total = viewModel.totalForMonth(month, year, transactions)
-            val hasData = viewModel.validatedTransactions(transactions, year, month).isNotEmpty()
-
-            Card(
-                onClick = { onMonthClick(month) },
+        rows.forEach { rowMonths ->
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (hasData)
-                        MaterialTheme.colorScheme.surfaceContainerLow
-                    else
-                        MaterialTheme.colorScheme.surfaceContainerLowest
-                )
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = monthName(month).take(4),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    if (hasData) {
-                        Text(
-                            text = total.formattedCurrency(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (total >= 0) IncomeGreen
-                            else MaterialTheme.colorScheme.error
+                rowMonths.forEach { month ->
+                    val total = viewModel.totalForMonth(month, year, transactions)
+                    val hasData = viewModel.validatedTransactions(transactions, year, month).isNotEmpty()
+
+                    Card(
+                        onClick = { onMonthClick(month) },
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (hasData)
+                                MaterialTheme.colorScheme.surfaceContainerLow
+                            else
+                                MaterialTheme.colorScheme.surfaceContainerLowest
                         )
-                    } else {
-                        Text(
-                            text = "—",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = monthName(month).take(4),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            if (hasData) {
+                                Text(
+                                    text = total.formattedCurrency(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (total >= 0) IncomeGreen
+                                    else MaterialTheme.colorScheme.error
+                                )
+                            } else {
+                                Text(
+                                    text = "—",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
+                }
+                // Fill remaining space if row has less than 3 items
+                repeat(3 - rowMonths.size) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }

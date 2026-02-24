@@ -31,6 +31,9 @@ class AccountsRepository @Inject constructor(
     private val _selectedAccountId = MutableStateFlow<UUID?>(null)
     val selectedAccountId: StateFlow<UUID?> = _selectedAccountId.asStateFlow()
 
+    private val _isInitialized = MutableStateFlow(false)
+    val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
+
     // ─── Initialization ──────────────────────────────────────────────
 
     suspend fun init() {
@@ -42,6 +45,8 @@ class AccountsRepository @Inject constructor(
 
         // Process recurring transactions on startup
         processRecurrences()
+
+        _isInitialized.value = true
     }
 
     // ─── Account CRUD ────────────────────────────────────────────────
@@ -167,13 +172,20 @@ class AccountsRepository @Inject constructor(
     // ─── Recurring processing ────────────────────────────────────────
 
     suspend fun processRecurrences() {
+        // Create deep copies first so originals stay unchanged for StateFlow comparison
+        val managersCopy = _transactionManagers.value.mapValues { (_, manager) ->
+            manager.copy(
+                transactions = manager.transactions.toMutableList(),
+                widgetShortcuts = manager.widgetShortcuts.toMutableList(),
+                recurringTransactions = manager.recurringTransactions.toMutableList()
+            )
+        }
         val modified = RecurrenceEngine.processAll(
             _accounts.value,
-            _transactionManagers.value
+            managersCopy
         )
         if (modified) {
-            // Force StateFlow emission by creating a new map reference
-            _transactionManagers.value = _transactionManagers.value.toMap()
+            _transactionManagers.value = managersCopy
             persist()
         }
     }
@@ -182,9 +194,17 @@ class AccountsRepository @Inject constructor(
 
     private suspend fun updateManager(accountId: UUID, action: (TransactionManager) -> Unit) {
         val manager = _transactionManagers.value[accountId] ?: return
-        action(manager)
-        // Force StateFlow emission
-        _transactionManagers.value = _transactionManagers.value.toMap()
+        // Create a deep copy BEFORE mutation so the original stays unchanged.
+        // This ensures StateFlow detects the change (old != new by equals).
+        val newManager = manager.copy(
+            transactions = manager.transactions.toMutableList(),
+            widgetShortcuts = manager.widgetShortcuts.toMutableList(),
+            recurringTransactions = manager.recurringTransactions.toMutableList()
+        )
+        action(newManager)
+        _transactionManagers.value = _transactionManagers.value.toMutableMap().apply {
+            put(accountId, newManager)
+        }
         persist()
     }
 

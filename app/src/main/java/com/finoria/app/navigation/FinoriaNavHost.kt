@@ -7,6 +7,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.finoria.app.data.model.Transaction
 import com.finoria.app.data.model.TransactionCategory
 import com.finoria.app.ui.analyses.AnalysesTabScreen
 import com.finoria.app.ui.analyses.CategoryTransactionsScreen
@@ -26,6 +27,7 @@ fun FinoriaNavHost(
     navController: NavHostController,
     viewModel: MainViewModel,
     onShowAddTransaction: () -> Unit,
+    onEditTransaction: (Transaction) -> Unit,
     onShowAccountPicker: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -40,7 +42,8 @@ fun FinoriaNavHost(
             HomeTabScreen(
                 viewModel = viewModel,
                 navController = navController,
-                onShowAccountPicker = onShowAccountPicker
+                onShowAccountPicker = onShowAccountPicker,
+                onEditTransaction = onEditTransaction
             )
         }
 
@@ -54,13 +57,15 @@ fun FinoriaNavHost(
         composable(Screen.Calendar.route) {
             CalendarTabScreen(
                 viewModel = viewModel,
-                navController = navController
+                navController = navController,
+                onEditTransaction = onEditTransaction
             )
         }
 
         composable(Screen.Future.route) {
             FutureTabScreen(
-                viewModel = viewModel
+                viewModel = viewModel,
+                onEditTransaction = onEditTransaction
             )
         }
 
@@ -70,13 +75,16 @@ fun FinoriaNavHost(
             AllTransactionsScreen(
                 viewModel = viewModel,
                 navController = navController,
-                embedded = false
+                embedded = false,
+                onEditTransaction = onEditTransaction
             )
         }
 
         composable(Screen.PotentialTransactions.route) {
             com.finoria.app.ui.future.PotentialTransactionsScreen(
-                viewModel = viewModel
+                viewModel = viewModel,
+                navController = navController,
+                onEditTransaction = onEditTransaction
             )
         }
 
@@ -95,7 +103,8 @@ fun FinoriaNavHost(
                 viewModel = viewModel,
                 month = month,
                 year = year,
-                navController = navController
+                navController = navController,
+                onEditTransaction = onEditTransaction
             )
         }
 
@@ -134,7 +143,8 @@ fun FinoriaNavHost(
                 category = category,
                 month = month,
                 year = year,
-                navController = navController
+                navController = navController,
+                onEditTransaction = onEditTransaction
             )
         }
     }

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.finoria.app.data.model.Transaction
+import com.finoria.app.ui.components.SwipeableTransactionRow
 import com.finoria.app.ui.components.TransactionRow
 import com.finoria.app.util.dayHeaderFormatted
 import com.finoria.app.viewmodel.MainViewModel
@@ -37,7 +38,8 @@ import com.finoria.app.viewmodel.MainViewModel
 fun AllTransactionsScreen(
     viewModel: MainViewModel,
     navController: NavController,
-    embedded: Boolean = false
+    embedded: Boolean = false,
+    onEditTransaction: (Transaction) -> Unit = {}
 ) {
     val transactions by viewModel.currentTransactions.collectAsStateWithLifecycle()
 
@@ -71,7 +73,12 @@ fun AllTransactionsScreen(
                     )
                 }
                 items(txns, key = { it.id }) { tx ->
-                    TransactionRow(transaction = tx)
+                    SwipeableTransactionRow(
+                        transaction = tx,
+                        onEdit = onEditTransaction,
+                        onDelete = { viewModel.removeTransaction(it) },
+                        onValidate = if (tx.potentiel) {{ viewModel.validateTransaction(it) }} else null
+                    )
                 }
             }
             item { Spacer(Modifier.height(80.dp)) }

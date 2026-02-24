@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.finoria.app.data.model.Transaction
 import com.finoria.app.navigation.Screen
 import com.finoria.app.ui.theme.IncomeGreen
 import com.finoria.app.util.formattedCurrency
@@ -48,7 +49,8 @@ enum class CalendarViewMode(val label: String) {
 @Composable
 fun CalendarContentScreen(
     viewModel: MainViewModel,
-    navController: NavController
+    navController: NavController,
+    onEditTransaction: (Transaction) -> Unit = {}
 ) {
     var mode by remember { mutableStateOf(CalendarViewMode.DAY) }
 
@@ -77,7 +79,8 @@ fun CalendarContentScreen(
             CalendarViewMode.DAY -> AllTransactionsScreen(
                 viewModel = viewModel,
                 navController = navController,
-                embedded = true
+                embedded = true,
+                onEditTransaction = onEditTransaction
             )
             CalendarViewMode.MONTH -> MonthsOverviewScreen(
                 viewModel = viewModel,

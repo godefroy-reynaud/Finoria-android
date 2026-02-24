@@ -2,6 +2,7 @@ package com.finoria.app.ui.calendar
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
+import com.finoria.app.data.model.Transaction
 import com.finoria.app.viewmodel.MainViewModel
 
 /**
@@ -10,10 +11,12 @@ import com.finoria.app.viewmodel.MainViewModel
 @Composable
 fun CalendarTabScreen(
     viewModel: MainViewModel,
-    navController: NavController
+    navController: NavController,
+    onEditTransaction: (Transaction) -> Unit = {}
 ) {
     CalendarContentScreen(
         viewModel = viewModel,
-        navController = navController
+        navController = navController,
+        onEditTransaction = onEditTransaction
     )
 }
