@@ -63,7 +63,7 @@ fun AddRecurringScreen(
 
     var type by remember { mutableStateOf(recurringToEdit?.type ?: TransactionType.EXPENSE) }
     var amountText by remember {
-        mutableStateOf(recurringToEdit?.let { String.format("%.2f", abs(it.amount)) } ?: "")
+        mutableStateOf(recurringToEdit?.let { String.format(java.util.Locale.US, "%.2f", abs(it.amount)) } ?: "")
     }
     var comment by remember { mutableStateOf(recurringToEdit?.comment ?: "") }
     var category by remember {

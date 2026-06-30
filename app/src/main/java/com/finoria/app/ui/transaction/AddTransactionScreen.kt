@@ -69,7 +69,7 @@ fun AddTransactionScreen(
     }
     var amountText by remember {
         mutableStateOf(
-            transactionToEdit?.let { String.format("%.2f", abs(it.amount)) } ?: ""
+            transactionToEdit?.let { String.format(java.util.Locale.US, "%.2f", abs(it.amount)) } ?: ""
         )
     }
     var comment by remember { mutableStateOf(transactionToEdit?.comment ?: "") }

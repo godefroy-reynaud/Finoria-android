@@ -1,6 +1,7 @@
 package com.finoria.app.data.local
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -34,6 +35,15 @@ class StorageService @Inject constructor(
     companion object {
         private val ACCOUNTS_KEY = stringPreferencesKey("accounts_data_v2")
         private val SELECTED_ACCOUNT_KEY = stringPreferencesKey("lastSelectedAccountId")
+        private val MIGRATED_TO_ROOM_KEY = booleanPreferencesKey("migrated_to_room_v1")
+    }
+
+    /** Migration JSON → Room déjà effectuée ? (one-shot, évite de ré-importer après un reset). */
+    suspend fun hasMigratedToRoom(): Boolean =
+        context.dataStore.data.first()[MIGRATED_TO_ROOM_KEY] ?: false
+
+    suspend fun setMigratedToRoom() {
+        context.dataStore.edit { prefs -> prefs[MIGRATED_TO_ROOM_KEY] = true }
     }
 
     @Serializable

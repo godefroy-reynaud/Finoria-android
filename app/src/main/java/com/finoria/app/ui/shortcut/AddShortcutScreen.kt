@@ -56,7 +56,7 @@ fun AddShortcutScreen(
     }
     var amountText by remember {
         mutableStateOf(
-            shortcutToEdit?.let { String.format("%.2f", abs(it.amount)) } ?: ""
+            shortcutToEdit?.let { String.format(java.util.Locale.US, "%.2f", abs(it.amount)) } ?: ""
         )
     }
     var comment by remember { mutableStateOf(shortcutToEdit?.comment ?: "") }

@@ -1,7 +1,6 @@
 package com.finoria.app.domain.service
 
 import com.finoria.app.data.model.Account
-import com.finoria.app.data.model.RecurrenceFrequency
 import com.finoria.app.data.model.Transaction
 import com.finoria.app.data.model.TransactionManager
 import com.finoria.app.data.model.TransactionType
@@ -35,41 +34,54 @@ object RecurrenceEngine {
                 if (recurring.isPaused) continue
 
                 val lastGenerated = recurring.lastGeneratedDate
-                    ?: recurring.startDate.minusDays(1)
-                var dateToProcess = nextDate(lastGenerated, recurring.frequency)
                 var latestGenerated = lastGenerated
 
+                // Les occurrences sont ancrées sur startDate (index-based via
+                // occurrenceDate), jamais chaînées depuis l'occurrence précédente :
+                // cela préserve le jour du mois pour les mois courts (loyer du 31).
+                var index = 0
+                var dateToProcess = recurring.occurrenceDate(index)
+
                 while (!dateToProcess.isAfter(nextMonth)) {
-                    val exists = manager.transactions.any {
-                        it.recurringTransactionId == recurring.id && it.date == dateToProcess
-                    }
+                    val alreadyGenerated =
+                        lastGenerated != null && !dateToProcess.isAfter(lastGenerated)
 
-                    if (!exists) {
-                        val signedAmount = if (recurring.type == TransactionType.EXPENSE) {
-                            -abs(recurring.amount)
-                        } else {
-                            abs(recurring.amount)
+                    if (!alreadyGenerated) {
+                        val exists = manager.transactions.any {
+                            it.recurringTransactionId == recurring.id && it.date == dateToProcess
                         }
-                        val isPotential = dateToProcess.isAfter(today)
 
-                        manager.transactions.add(
-                            Transaction(
-                                amount = signedAmount,
-                                comment = recurring.comment,
-                                potentiel = isPotential,
-                                date = dateToProcess,
-                                category = recurring.category,
-                                recurringTransactionId = recurring.id
+                        if (!exists) {
+                            val signedAmount = if (recurring.type == TransactionType.EXPENSE) {
+                                -abs(recurring.amount)
+                            } else {
+                                abs(recurring.amount)
+                            }
+                            val isPotential = dateToProcess.isAfter(today)
+
+                            manager.transactions.add(
+                                Transaction(
+                                    amount = signedAmount,
+                                    comment = recurring.comment,
+                                    potentiel = isPotential,
+                                    date = dateToProcess,
+                                    category = recurring.category,
+                                    recurringTransactionId = recurring.id
+                                )
                             )
-                        )
-                        modified = true
+                            modified = true
+                        }
+
+                        if (latestGenerated == null || dateToProcess.isAfter(latestGenerated)) {
+                            latestGenerated = dateToProcess
+                        }
                     }
 
-                    latestGenerated = dateToProcess
-                    dateToProcess = nextDate(dateToProcess, recurring.frequency)
+                    index++
+                    dateToProcess = recurring.occurrenceDate(index)
                 }
 
-                if (latestGenerated.isAfter(lastGenerated)) {
+                if (latestGenerated != null && latestGenerated != lastGenerated) {
                     manager.recurringTransactions[i] =
                         recurring.copy(lastGeneratedDate = latestGenerated)
                     modified = true
@@ -91,12 +103,4 @@ object RecurrenceEngine {
             it.recurringTransactionId == recurringId && it.potentiel
         }
     }
-
-    private fun nextDate(current: LocalDate, frequency: RecurrenceFrequency): LocalDate =
-        when (frequency) {
-            RecurrenceFrequency.DAILY -> current.plusDays(1)
-            RecurrenceFrequency.WEEKLY -> current.plusWeeks(1)
-            RecurrenceFrequency.MONTHLY -> current.plusMonths(1)
-            RecurrenceFrequency.YEARLY -> current.plusYears(1)
-        }
 }

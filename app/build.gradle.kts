@@ -41,6 +41,11 @@ android {
     }
 }
 
+// Export du schéma Room (versionné, pour écrire/tester les migrations futures)
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     // Core
     implementation(libs.androidx.core.ktx)
@@ -66,7 +71,12 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
-    // DataStore (persistence)
+    // Room (persistence)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
+    // DataStore (préférences : compte sélectionné, flags)
     implementation(libs.androidx.datastore.preferences)
 
     // Kotlinx Serialization (JSON)

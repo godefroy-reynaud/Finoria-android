@@ -25,21 +25,35 @@ data class RecurringTransaction(
     val isPaused: Boolean = false
 ) {
     /**
-     * Calcul des dates d'occurrence entre [from] et [to].
+     * Date de la n-ième occurrence, **ancrée sur [startDate]**.
+     *
+     * L'index est toujours appliqué à partir de [startDate] (jamais chaîné depuis
+     * l'occurrence précédente). C'est essentiel pour les mois courts : un loyer du
+     * 31 reste au 31, simplement clampé quand le mois est plus court
+     * (31 janv → 28 févr → 31 mars → 30 avr → 31 mai). Chaîner `plusMonths(1)`
+     * depuis une date déjà clampée provoquerait une dérive permanente (→ 28 partout).
+     */
+    fun occurrenceDate(index: Int): LocalDate = when (frequency) {
+        RecurrenceFrequency.DAILY -> startDate.plusDays(index.toLong())
+        RecurrenceFrequency.WEEKLY -> startDate.plusWeeks(index.toLong())
+        RecurrenceFrequency.MONTHLY -> startDate.plusMonths(index.toLong())
+        RecurrenceFrequency.YEARLY -> startDate.plusYears(index.toLong())
+    }
+
+    /**
+     * Calcul des dates d'occurrence entre [from] et [to] (bornes incluses),
+     * ancrées sur [startDate] via [occurrenceDate].
      */
     fun occurrences(from: LocalDate, to: LocalDate): List<LocalDate> {
         val dates = mutableListOf<LocalDate>()
-        var current = startDate
+        var index = 0
+        var current = occurrenceDate(index)
         while (!current.isAfter(to)) {
             if (!current.isBefore(from)) {
                 dates.add(current)
             }
-            current = when (frequency) {
-                RecurrenceFrequency.DAILY -> current.plusDays(1)
-                RecurrenceFrequency.WEEKLY -> current.plusWeeks(1)
-                RecurrenceFrequency.MONTHLY -> current.plusMonths(1)
-                RecurrenceFrequency.YEARLY -> current.plusYears(1)
-            }
+            index++
+            current = occurrenceDate(index)
         }
         return dates
     }
