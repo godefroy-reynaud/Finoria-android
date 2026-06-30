@@ -1,0 +1,13 @@
+{
+  // Forcer VS Code/Gradle à utiliser le JDK complet d'Android Studio (la JRE
+  // embarquée de l'extension Red Hat n'a pas `jlink` → échec JdkImageTransform).
+  "java.jdt.ls.java.home": "C:\\Program Files\\Android\\Android Studio\\jbr",
+  "java.import.gradle.java.home": "C:\\Program Files\\Android\\Android Studio\\jbr",
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-21",
+      "path": "C:\\Program Files\\Android\\Android Studio\\jbr",
+      "default": true
+    }
+  ]
+}
