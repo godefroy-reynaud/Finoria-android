@@ -1,22 +1,26 @@
 package com.finoria.app.data.model
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountBalance
-import androidx.compose.material.icons.outlined.AccountBalanceWallet
-import androidx.compose.material.icons.outlined.BusinessCenter
-import androidx.compose.material.icons.outlined.CardGiftcard
-import androidx.compose.material.icons.outlined.CreditCard
-import androidx.compose.material.icons.outlined.Payments
-import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
+import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.BusinessCenter
+import androidx.compose.material.icons.outlined.Flight
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.School
+import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.finoria.app.ui.components.StylableEnum
 import kotlinx.serialization.Serializable
 
 /**
- * Style visuel d'un compte (icône, couleur, label).
- * Utilisé dans AccountCard et StylePickerGrid.
+ * Style visuel d'un compte (icône, couleur, label). Fixe, non modifiable.
+ *
+ * Les 10 styles suivent le portage iOS → Android. Le `name` Kotlin est la **clé
+ * stable** stockée en base (via Room) et ne doit pas être renommé une fois publié.
  */
 @Serializable
 enum class AccountStyle(
@@ -24,25 +28,29 @@ enum class AccountStyle(
     val colorValue: Long,
     val labelText: String
 ) : StylableEnum {
-    BANK("account_balance", 0xFF2196F3, "Compte courant"),
-    SAVINGS("savings", 0xFFFF9800, "Épargne"),
-    INVESTMENT("show_chart", 0xFF9C27B0, "Investissements"),
-    CARD("credit_card", 0xFF4CAF50, "Carte"),
-    CASH("payments", 0xFF00BCD4, "Espèces"),
-    PIGGY("card_giftcard", 0xFFE91E63, "Tirelire"),
-    WALLET("account_balance_wallet", 0xFF795548, "Portefeuille"),
-    BUSINESS("business_center", 0xFF3F51B5, "Professionnel");
+    BANK("account_balance", CategoryColors.BLUE, "Courant"),
+    SAVINGS("payments", CategoryColors.ORANGE, "Épargne"),
+    INVESTMENT("show_chart", CategoryColors.PURPLE, "Investissement"),
+    BUSINESS("business_center", CategoryColors.INDIGO, "Professionnel"),
+    TRAVEL("flight", CategoryColors.TEAL, "Voyage"),
+    GROCERY("shopping_cart", CategoryColors.GREEN, "Courses"),
+    STUDENT("school", CategoryColors.CYAN, "Étudiant"),
+    FAMILY("people", CategoryColors.PINK, "Famille"),
+    PROPERTY("home", CategoryColors.BROWN, "Immobilier"),
+    ENTERTAINMENT("sports_esports", CategoryColors.RED, "Loisirs");
 
     override val icon: ImageVector
         get() = when (this) {
             BANK -> Icons.Outlined.AccountBalance
-            SAVINGS -> Icons.Outlined.Savings
+            SAVINGS -> Icons.Outlined.Payments
             INVESTMENT -> Icons.AutoMirrored.Outlined.ShowChart
-            CARD -> Icons.Outlined.CreditCard
-            CASH -> Icons.Outlined.Payments
-            PIGGY -> Icons.Outlined.CardGiftcard
-            WALLET -> Icons.Outlined.AccountBalanceWallet
             BUSINESS -> Icons.Outlined.BusinessCenter
+            TRAVEL -> Icons.Outlined.Flight
+            GROCERY -> Icons.Outlined.ShoppingCart
+            STUDENT -> Icons.Outlined.School
+            FAMILY -> Icons.Outlined.People
+            PROPERTY -> Icons.Outlined.Home
+            ENTERTAINMENT -> Icons.Outlined.SportsEsports
         }
 
     override val color: Color
@@ -56,13 +64,15 @@ enum class AccountStyle(
             val text = name.lowercase()
             return when {
                 text.containsAny("courant", "principal", "bnp", "société générale", "crédit") -> BANK
-                text.containsAny("livret", "épargne", "ldd", "pel") -> SAVINGS
+                text.containsAny("livret", "épargne", "ldd", "pel", "économie") -> SAVINGS
                 text.containsAny("invest", "pea", "crypto", "bourse", "action") -> INVESTMENT
-                text.containsAny("carte", "revolut", "n26", "lydia") -> CARD
-                text.containsAny("espèce", "cash", "liquide") -> CASH
-                text.containsAny("tirelire", "économie") -> PIGGY
-                text.containsAny("portefeuille", "wallet") -> WALLET
-                text.containsAny("pro", "entreprise", "business") -> BUSINESS
+                text.containsAny("pro", "entreprise", "business", "auto-entrepreneur") -> BUSINESS
+                text.containsAny("voyage", "vacances", "travel") -> TRAVEL
+                text.containsAny("course", "alimentation", "supermarché") -> GROCERY
+                text.containsAny("étudiant", "student", "école", "université") -> STUDENT
+                text.containsAny("famille", "enfant", "commun") -> FAMILY
+                text.containsAny("immobilier", "immo", "loyer", "appartement") -> PROPERTY
+                text.containsAny("loisir", "jeu", "gaming", "divertissement") -> ENTERTAINMENT
                 else -> BANK
             }
         }

@@ -15,30 +15,46 @@ import kotlin.math.abs
 
 /**
  * Service d'export/import CSV.
- * Export via FileProvider, import via URI (ACTION_OPEN_DOCUMENT).
+ *
+ * Format (portage iOS) — en-tête sur 5 colonnes, séparateur virgule, UTF-8, `\n` :
+ * `Date,Type,Montant,Commentaire,Catégorie`
+ *
+ * - `Date` : `jj/MM/aaaa` (FR) ou `N/A` si absente.
+ * - `Type` : `Revenu` (montant ≥ 0) ou `Dépense` (montant < 0).
+ * - `Montant` : valeur **absolue**, 2 décimales, séparateur décimal **point**.
+ * - `Commentaire` / `Catégorie` : échappés RFC 4180 (voir [escapeCsv]).
+ *
+ * Export via FileProvider (partage) ou vers un URI choisi (SAF) ; import via URI.
  */
 object CsvService {
 
     private val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.FRANCE)
+    private const val HEADER = "Date,Type,Montant,Commentaire,Catégorie"
 
     /**
-     * Construit le contenu texte du CSV des transactions.
-     * Retourne null si la liste est vide.
+     * Construit le contenu texte du CSV des transactions du compte.
+     *
+     * On **exclut** les transactions potentielles et celles générées par une
+     * récurrence. Tri par date décroissante (sans date en dernier).
+     * Retourne null s'il n'y a rien à exporter.
      */
     fun buildCsvContent(transactions: List<Transaction>): String? {
-        val sorted = transactions.sortedByDescending { it.date }
-        if (sorted.isEmpty()) return null
+        val exportable = transactions.filter { !it.potentiel && it.recurringTransactionId == null }
+        if (exportable.isEmpty()) return null
 
-        val sb = StringBuilder("Date,Type,Montant,Commentaire,Statut,Catégorie\n")
+        val sorted = exportable.sortedByDescending { it.date ?: LocalDate.MIN }
 
+        val sb = StringBuilder()
+        sb.append(HEADER).append('\n')
         for (tx in sorted) {
             val dateStr = tx.date?.format(formatter) ?: "N/A"
             val type = if (tx.amount >= 0) "Revenu" else "Dépense"
-            val amount = String.format(Locale.FRANCE, "%.2f", abs(tx.amount))
-            val comment = tx.comment.replace(",", ";")
-            val status = if (tx.potentiel) "Potentielle" else "Validée"
-            val category = tx.category.labelText
-            sb.appendLine("$dateStr,$type,$amount,$comment,$status,$category")
+            val amount = String.format(Locale.US, "%.2f", abs(tx.amount))
+            sb.append(dateStr).append(',')
+                .append(type).append(',')
+                .append(amount).append(',')
+                .append(escapeCsv(tx.comment)).append(',')
+                .append(escapeCsv(tx.category.labelText)).append('\n')
         }
 
         return sb.toString()
@@ -89,46 +105,104 @@ object CsvService {
 
     /**
      * Importe les transactions depuis un fichier CSV (URI).
+     *
+     * Parsing RFC 4180 (respecte les guillemets/virgules échappés). Le signe du
+     * montant est réappliqué depuis la colonne `Type`. La catégorie est résolue
+     * par correspondance de libellé avec les catégories par défaut ; un libellé
+     * inconnu retombe sur `Autre`. Les transactions importées sont validées ;
+     * une date `N/A` est remplacée par la date du jour.
      */
     fun importCsv(uri: Uri, context: Context): List<Transaction> {
         val transactions = mutableListOf<Transaction>()
         val inputStream = context.contentResolver.openInputStream(uri) ?: return emptyList()
 
-        BufferedReader(InputStreamReader(inputStream)).use { reader ->
-            reader.readLine() // Skip header
+        BufferedReader(InputStreamReader(inputStream, Charsets.UTF_8)).use { reader ->
+            reader.readLine() // Ignore l'en-tête
             reader.forEachLine { line ->
-                val parts = line.split(",")
-                if (parts.size >= 4) {
-                    try {
-                        val date = try {
-                            LocalDate.parse(parts[0].trim(), formatter)
-                        } catch (_: Exception) {
-                            null
-                        }
-                        val amount = parts[2].trim().replace(",", ".").toDoubleOrNull() ?: return@forEachLine
-                        val signedAmount = if (parts[1].trim() == "Dépense") -abs(amount) else abs(amount)
-                        val comment = parts[3].trim().replace(";", ",")
-                        val isPotential = parts.getOrNull(4)?.trim() == "Potentielle"
-                        val category = parts.getOrNull(5)?.trim()?.let { label ->
-                            TransactionCategory.entries.find { it.labelText == label }
-                        } ?: TransactionCategory.OTHER
-
-                        transactions.add(
-                            Transaction(
-                                amount = signedAmount,
-                                comment = comment,
-                                potentiel = isPotential,
-                                date = date,
-                                category = category
-                            )
-                        )
+                if (line.isBlank()) return@forEachLine
+                val parts = parseCsvLine(line)
+                if (parts.size < 4) return@forEachLine
+                try {
+                    val date = try {
+                        LocalDate.parse(parts[0].trim(), formatter)
                     } catch (_: Exception) {
-                        // Ignore malformed lines
+                        null
                     }
+                    val amount = parts[2].trim().replace(",", ".").toDoubleOrNull()
+                        ?: return@forEachLine
+                    val signedAmount =
+                        if (parts[1].trim() == "Dépense") -abs(amount) else abs(amount)
+                    val comment = parts[3]
+                    val category = parts.getOrNull(4)?.trim()?.takeIf { it.isNotEmpty() }
+                        ?.let { label -> TransactionCategory.entries.find { it.labelText == label } }
+                        ?: TransactionCategory.OTHER
+
+                    transactions.add(
+                        Transaction(
+                            amount = signedAmount,
+                            comment = comment,
+                            potentiel = false,
+                            date = date ?: LocalDate.now(),
+                            category = category
+                        )
+                    )
+                } catch (_: Exception) {
+                    // Ligne malformée ignorée
                 }
             }
         }
 
         return transactions
+    }
+
+    /**
+     * Échappe un champ selon RFC 4180 : si le champ contient une virgule, un
+     * guillemet ou un saut de ligne, il est entouré de guillemets et les
+     * guillemets internes sont doublés.
+     */
+    private fun escapeCsv(field: String): String =
+        if (field.any { it == ',' || it == '"' || it == '\n' || it == '\r' }) {
+            "\"" + field.replace("\"", "\"\"") + "\""
+        } else {
+            field
+        }
+
+    /**
+     * Découpe une ligne CSV en respectant les guillemets RFC 4180 (ne coupe pas
+     * au milieu d'un champ échappé). À l'intérieur des guillemets, `""` = un
+     * guillemet littéral ; une virgule hors guillemets sépare deux champs.
+     */
+    private fun parseCsvLine(line: String): List<String> {
+        val fields = mutableListOf<String>()
+        val current = StringBuilder()
+        var inQuotes = false
+        var i = 0
+        while (i < line.length) {
+            val c = line[i]
+            if (inQuotes) {
+                if (c == '"') {
+                    if (i + 1 < line.length && line[i + 1] == '"') {
+                        current.append('"')
+                        i++
+                    } else {
+                        inQuotes = false
+                    }
+                } else {
+                    current.append(c)
+                }
+            } else {
+                when (c) {
+                    '"' -> inQuotes = true
+                    ',' -> {
+                        fields.add(current.toString())
+                        current.setLength(0)
+                    }
+                    else -> current.append(c)
+                }
+            }
+            i++
+        }
+        fields.add(current.toString())
+        return fields
     }
 }

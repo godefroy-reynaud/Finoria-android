@@ -26,7 +26,8 @@ class Converters {
     fun fromAccountStyle(value: AccountStyle): String = value.name
 
     @TypeConverter
-    fun toAccountStyle(value: String): AccountStyle = AccountStyle.valueOf(value)
+    fun toAccountStyle(value: String): AccountStyle =
+        runCatching { AccountStyle.valueOf(value) }.getOrDefault(AccountStyle.BANK)
 
     @TypeConverter
     fun fromTransactionType(value: TransactionType): String = value.name
@@ -39,7 +40,7 @@ class Converters {
 
     @TypeConverter
     fun toTransactionCategory(value: String): TransactionCategory =
-        TransactionCategory.valueOf(value)
+        runCatching { TransactionCategory.valueOf(value) }.getOrDefault(TransactionCategory.OTHER)
 
     @TypeConverter
     fun fromRecurrenceFrequency(value: RecurrenceFrequency): String = value.name
