@@ -138,9 +138,8 @@ class AccountsRepository @Inject constructor(
 
     suspend fun addAccount(account: Account) {
         accountDao.upsert(account.toEntity())
-        if (_selectedAccountId.value == null) {
-            selectAccount(account.id)
-        }
+        // Sélectionne toujours le compte fraîchement créé.
+        selectAccount(account.id)
     }
 
     suspend fun updateAccount(account: Account) {

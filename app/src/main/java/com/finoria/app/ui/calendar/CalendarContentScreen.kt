@@ -20,7 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,7 +52,9 @@ fun CalendarContentScreen(
     navController: NavController,
     onEditTransaction: (Transaction) -> Unit = {}
 ) {
-    var mode by remember { mutableStateOf(CalendarViewMode.DAY) }
+    // rememberSaveable : restaure le mode (Jour/Mois/Année) au retour depuis un
+    // sous-écran, au lieu de repartir systématiquement en mode Jour.
+    var mode by rememberSaveable { mutableStateOf(CalendarViewMode.DAY) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Spacer(Modifier.height(8.dp))

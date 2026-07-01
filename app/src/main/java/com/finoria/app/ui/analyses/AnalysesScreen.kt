@@ -24,7 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,10 +53,12 @@ fun AnalysesScreen(
 ) {
     val transactions by viewModel.currentTransactions.collectAsStateWithLifecycle()
 
-    var analysisType by remember { mutableStateOf(AnalysisType.EXPENSES) }
-    var selectedMonth by remember { mutableIntStateOf(LocalDate.now().monthValue) }
-    var selectedYear by remember { mutableIntStateOf(LocalDate.now().year) }
-    var selectedCategory by remember { mutableStateOf<TransactionCategory?>(null) }
+    // rememberSaveable : restaure le filtre (type/mois/année/catégorie) au retour
+    // depuis un sous-écran, au lieu de repartir du mois courant en mode dépenses.
+    var analysisType by rememberSaveable { mutableStateOf(AnalysisType.EXPENSES) }
+    var selectedMonth by rememberSaveable { mutableIntStateOf(LocalDate.now().monthValue) }
+    var selectedYear by rememberSaveable { mutableIntStateOf(LocalDate.now().year) }
+    var selectedCategory by rememberSaveable { mutableStateOf<TransactionCategory?>(null) }
 
     val categoryData = viewModel.getCategoryBreakdown(
         transactions, analysisType, selectedMonth, selectedYear
