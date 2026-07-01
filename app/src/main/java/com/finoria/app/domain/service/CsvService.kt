@@ -22,13 +22,10 @@ object CsvService {
     private val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.FRANCE)
 
     /**
-     * Génère un fichier CSV et retourne l'URI via FileProvider pour le partage.
+     * Construit le contenu texte du CSV des transactions.
+     * Retourne null si la liste est vide.
      */
-    fun generateCsv(
-        transactions: List<Transaction>,
-        accountName: String,
-        context: Context
-    ): Uri? {
+    fun buildCsvContent(transactions: List<Transaction>): String? {
         val sorted = transactions.sortedByDescending { it.date }
         if (sorted.isEmpty()) return null
 
@@ -44,16 +41,50 @@ object CsvService {
             sb.appendLine("$dateStr,$type,$amount,$comment,$status,$category")
         }
 
+        return sb.toString()
+    }
+
+    /**
+     * Génère un fichier CSV et retourne l'URI via FileProvider pour le partage.
+     */
+    fun generateCsv(
+        transactions: List<Transaction>,
+        accountName: String,
+        context: Context
+    ): Uri? {
+        val content = buildCsvContent(transactions) ?: return null
+
         val csvDir = File(context.cacheDir, "csv")
         csvDir.mkdirs()
         val file = File(csvDir, "${accountName}_transactions_${System.currentTimeMillis()}.csv")
-        file.writeText(sb.toString())
+        file.writeText(content)
 
         return FileProvider.getUriForFile(
             context,
             "${context.packageName}.provider",
             file
         )
+    }
+
+    /**
+     * Écrit le contenu CSV dans un URI choisi par l'utilisateur via le
+     * sélecteur de fichiers Android (Storage Access Framework).
+     * Permet d'enregistrer directement dans le gestionnaire de fichiers du téléphone.
+     * Retourne true si l'écriture a réussi.
+     */
+    fun writeCsvToUri(
+        uri: Uri,
+        transactions: List<Transaction>,
+        context: Context
+    ): Boolean {
+        val content = buildCsvContent(transactions) ?: return false
+        return try {
+            context.contentResolver.openOutputStream(uri)?.use { output ->
+                output.write(content.toByteArray(Charsets.UTF_8))
+            } != null
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /**

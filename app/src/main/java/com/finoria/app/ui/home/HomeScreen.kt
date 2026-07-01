@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -21,9 +22,11 @@ import com.finoria.app.data.model.RecurringTransaction
 import com.finoria.app.data.model.Transaction
 import com.finoria.app.data.model.WidgetShortcut
 import com.finoria.app.navigation.Screen
+import com.finoria.app.ui.LocalSnackbarHostState
 import com.finoria.app.ui.recurring.RecurringGrid
 import com.finoria.app.ui.shortcut.ShortcutsGrid
 import com.finoria.app.viewmodel.MainViewModel
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /**
@@ -44,6 +47,9 @@ fun HomeScreen(
     val transactions by viewModel.currentTransactions.collectAsStateWithLifecycle()
     val shortcuts by viewModel.currentShortcuts.collectAsStateWithLifecycle()
     val recurrings by viewModel.currentRecurring.collectAsStateWithLifecycle()
+
+    val snackbarHostState = LocalSnackbarHostState.current
+    val scope = rememberCoroutineScope()
 
     val totalCurrent = viewModel.totalNonPotential(transactions)
     val totalPotential = viewModel.totalPotential(transactions)
@@ -101,7 +107,10 @@ fun HomeScreen(
         item {
             ShortcutsGrid(
                 shortcuts = shortcuts,
-                onTap = { shortcut -> viewModel.executeShortcut(shortcut) },
+                onTap = { shortcut ->
+                    viewModel.executeShortcut(shortcut)
+                    scope.launch { snackbarHostState.showSnackbar("Transaction ajoutée") }
+                },
                 onEdit = onEditShortcut,
                 onDelete = { shortcut -> viewModel.removeShortcut(shortcut) },
                 onAdd = onAddShortcut
