@@ -32,6 +32,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.finoria.app.data.model.Transaction
+import com.finoria.app.ui.theme.Blue700
+import com.finoria.app.ui.theme.ExpenseRed
 import com.finoria.app.ui.theme.IncomeGreen
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -48,7 +50,6 @@ fun SwipeableTransactionRow(
     onEdit: (Transaction) -> Unit,
     onDelete: (Transaction) -> Unit,
     onValidate: ((Transaction) -> Unit)? = null,
-    onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
@@ -80,7 +81,7 @@ fun SwipeableTransactionRow(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(if (isPotential) IncomeGreen else MaterialTheme.colorScheme.primary)
+                        .background(if (isPotential) IncomeGreen else Blue700)
                         .padding(start = 20.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
@@ -98,7 +99,7 @@ fun SwipeableTransactionRow(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.error)
+                        .background(ExpenseRed)
                         .padding(end = 20.dp),
                     contentAlignment = Alignment.CenterEnd
                 ) {
@@ -146,7 +147,7 @@ fun SwipeableTransactionRow(
         ) {
             TransactionRow(
                 transaction = transaction,
-                onClick = onClick
+                onClick = { onEdit(transaction) }
             )
         }
     }
