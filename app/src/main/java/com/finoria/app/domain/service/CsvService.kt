@@ -11,17 +11,18 @@ import java.io.InputStreamReader
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlin.math.abs
 
 /**
  * Service d'export/import CSV.
  *
- * Format (portage iOS) — en-tête sur 5 colonnes, séparateur virgule, UTF-8, `\n` :
- * `Date,Type,Montant,Commentaire,Catégorie`
+ * Format — en-tête sur 4 colonnes, séparateur virgule, UTF-8, `\n` :
+ * `Date,Montant,Commentaire,Catégorie`
  *
  * - `Date` : `jj/MM/aaaa` (FR) ou `N/A` si absente.
- * - `Type` : `Revenu` (montant ≥ 0) ou `Dépense` (montant < 0).
- * - `Montant` : valeur **absolue**, 2 décimales, séparateur décimal **point**.
+ * - `Montant` : montant **signé** (dépense < 0, revenu ≥ 0), 2 décimales,
+ *   séparateur décimal **virgule** ; comme la virgule est aussi le séparateur de
+ *   colonnes, le montant est **entouré de guillemets** pour rester dans une seule
+ *   colonne (ex. `"-42,90"`).
  * - `Commentaire` / `Catégorie` : échappés RFC 4180 (voir [escapeCsv]).
  *
  * Export via FileProvider (partage) ou vers un URI choisi (SAF) ; import via URI.
@@ -29,7 +30,7 @@ import kotlin.math.abs
 object CsvService {
 
     private val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.FRANCE)
-    private const val HEADER = "Date,Type,Montant,Commentaire,Catégorie"
+    private const val HEADER = "Date,Montant,Commentaire,Catégorie"
 
     /**
      * Construit le contenu texte du CSV des transactions du compte.
@@ -48,11 +49,10 @@ object CsvService {
         sb.append(HEADER).append('\n')
         for (tx in sorted) {
             val dateStr = tx.date?.format(formatter) ?: "N/A"
-            val type = if (tx.amount >= 0) "Revenu" else "Dépense"
-            val amount = String.format(Locale.US, "%.2f", abs(tx.amount))
+            // Montant signé, décimale = virgule → escapeCsv l'entoure de guillemets.
+            val amount = String.format(Locale.FRANCE, "%.2f", tx.amount)
             sb.append(dateStr).append(',')
-                .append(type).append(',')
-                .append(amount).append(',')
+                .append(escapeCsv(amount)).append(',')
                 .append(escapeCsv(tx.comment)).append(',')
                 .append(escapeCsv(tx.category.labelText)).append('\n')
         }
@@ -106,11 +106,12 @@ object CsvService {
     /**
      * Importe les transactions depuis un fichier CSV (URI).
      *
-     * Parsing RFC 4180 (respecte les guillemets/virgules échappés). Le signe du
-     * montant est réappliqué depuis la colonne `Type`. La catégorie est résolue
-     * par correspondance de libellé avec les catégories par défaut ; un libellé
-     * inconnu retombe sur `Autre`. Les transactions importées sont validées ;
-     * une date `N/A` est remplacée par la date du jour.
+     * Parsing RFC 4180 (respecte les guillemets/virgules échappés). Le montant est
+     * déjà **signé** dans le fichier (dépense < 0, revenu ≥ 0) — il n'y a plus de
+     * colonne `Type`. La catégorie est résolue par correspondance de libellé avec
+     * les catégories par défaut ; un libellé inconnu retombe sur `Autre`. Les
+     * transactions importées sont validées ; une date `N/A` est remplacée par la
+     * date du jour.
      */
     fun importCsv(uri: Uri, context: Context): List<Transaction> {
         val transactions = mutableListOf<Transaction>()
@@ -121,25 +122,25 @@ object CsvService {
             reader.forEachLine { line ->
                 if (line.isBlank()) return@forEachLine
                 val parts = parseCsvLine(line)
-                if (parts.size < 4) return@forEachLine
+                if (parts.size < 2) return@forEachLine
                 try {
                     val date = try {
                         LocalDate.parse(parts[0].trim(), formatter)
                     } catch (_: Exception) {
                         null
                     }
-                    val amount = parts[2].trim().replace(",", ".").toDoubleOrNull()
+                    // Décimale virgule → on repasse au point pour toDouble ; le
+                    // signe est déjà porté par la valeur.
+                    val amount = parts[1].trim().replace(",", ".").toDoubleOrNull()
                         ?: return@forEachLine
-                    val signedAmount =
-                        if (parts[1].trim() == "Dépense") -abs(amount) else abs(amount)
-                    val comment = parts[3]
-                    val category = parts.getOrNull(4)?.trim()?.takeIf { it.isNotEmpty() }
+                    val comment = parts.getOrNull(2) ?: ""
+                    val category = parts.getOrNull(3)?.trim()?.takeIf { it.isNotEmpty() }
                         ?.let { label -> TransactionCategory.entries.find { it.labelText == label } }
                         ?: TransactionCategory.OTHER
 
                     transactions.add(
                         Transaction(
-                            amount = signedAmount,
+                            amount = amount,
                             comment = comment,
                             potentiel = false,
                             date = date ?: LocalDate.now(),
