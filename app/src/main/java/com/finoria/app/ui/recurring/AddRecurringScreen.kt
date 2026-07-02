@@ -42,7 +42,7 @@ import com.finoria.app.data.model.RecurringTransaction
 import com.finoria.app.data.model.TransactionCategory
 import com.finoria.app.data.model.TransactionType
 import com.finoria.app.ui.components.CurrencyTextField
-import com.finoria.app.ui.components.StylePickerGrid
+import com.finoria.app.ui.components.TransactionCategoryPicker
 import com.finoria.app.viewmodel.MainViewModel
 import java.time.Instant
 import java.time.LocalDate
@@ -203,11 +203,9 @@ fun AddRecurringScreen(
             Text("Catégorie", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(8.dp))
 
-            StylePickerGrid(
+            TransactionCategoryPicker(
                 selected = category,
-                onSelect = { category = it },
-                values = TransactionCategory.entries.toTypedArray(),
-                columns = 5
+                onSelect = { category = it }
             )
 
             if (isEdit) {

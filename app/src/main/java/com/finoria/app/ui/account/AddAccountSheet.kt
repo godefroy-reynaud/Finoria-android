@@ -122,7 +122,8 @@ fun AddAccountSheet(
             StylePickerGrid(
                 selected = style,
                 onSelect = { style = it },
-                values = AccountStyle.entries.toTypedArray()
+                values = AccountStyle.entries.toTypedArray(),
+                columns = 5
             )
 
             Spacer(Modifier.height(16.dp))
