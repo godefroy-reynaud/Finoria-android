@@ -115,18 +115,6 @@ class MainViewModel @Inject constructor(
     ): List<CategoryData> =
         CalculationService.getCategoryBreakdown(transactions, type, month, year, customCategories)
 
-    fun totalNonPotentialForAccount(accountId: UUID): Double {
-        val manager = transactionManagers.value[accountId]
-        return manager?.transactions?.let { CalculationService.totalNonPotential(it) } ?: 0.0
-    }
-
-    fun totalWithPotentialForAccount(accountId: UUID): Double {
-        val manager = transactionManagers.value[accountId]
-        return manager?.transactions?.let {
-            CalculationService.totalNonPotential(it) + CalculationService.totalPotential(it)
-        } ?: 0.0
-    }
-
     // ─── Account actions ─────────────────────────────────────────────
 
     fun addAccount(account: Account) {

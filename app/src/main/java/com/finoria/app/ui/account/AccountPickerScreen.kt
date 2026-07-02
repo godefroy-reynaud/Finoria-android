@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.finoria.app.data.model.Account
 import com.finoria.app.ui.components.ConfirmationDialog
 import com.finoria.app.viewmodel.MainViewModel
@@ -44,6 +45,9 @@ fun AccountPickerSheet(
     onEditAccount: (Account) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    // Observé pour recomposer les cartes quand les transactions changent
+    // (ex. réinitialisation d'un compte) — sinon les soldes restent figés.
+    val managers by viewModel.transactionManagers.collectAsStateWithLifecycle()
     var contextMenuAccount by remember { mutableStateOf<Account?>(null) }
     var accountToReset by remember { mutableStateOf<Account?>(null) }
     var accountToDelete by remember { mutableStateOf<Account?>(null) }
@@ -63,10 +67,12 @@ fun AccountPickerSheet(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(accounts, key = { it.id }) { account ->
+                val transactions = managers[account.id]?.transactions.orEmpty()
+                val solde = viewModel.totalNonPotential(transactions)
                 AccountCard(
                     account = account,
-                    solde = viewModel.totalNonPotentialForAccount(account.id),
-                    futur = viewModel.totalWithPotentialForAccount(account.id),
+                    solde = solde,
+                    futur = solde + viewModel.totalPotential(transactions),
                     isSelected = account.id == selectedAccountId,
                     onClick = {
                         viewModel.selectAccount(account.id)
