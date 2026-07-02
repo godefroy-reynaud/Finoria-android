@@ -274,8 +274,9 @@ app/src/androidTest/…/data/local/  # Room in-memory : cascade/nullify ; Migrat
   **Tester le build release sur device avant toute publication.**
 - **Identifiants** : `applicationId = "com.finoria"` (définitif une fois publié),
   `namespace = "com.finoria.app"` (interne, sans contrainte).
-- **Cible** : targetSdk 35. Play exigera l'API 36 pour les mises à jour à
-  partir du 31 août 2026 — prévoir le bump.
+- **Cible** : compileSdk 36 / targetSdk 36 (Android 16) — conforme à l'exigence
+  Play du 31 août 2026. minSdk 26 (Android 8.0). L'app est edge-to-edge
+  (`enableEdgeToEdge()` + insets gérés par `Scaffold`).
 
 ### Checklist avant chaque release
 

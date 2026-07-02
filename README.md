@@ -112,7 +112,7 @@ migration, arborescence complète) est dans **[ARCHITECTURE.md](ARCHITECTURE.md)
 
 | Composant | Technologie |
 |-----------|-------------|
-| Plateforme | Android 8.0+ (minSdk 26, targetSdk 35) |
+| Plateforme | Android 8.0+ (minSdk 26, targetSdk 36) |
 | Langage | Kotlin 2.0.21 |
 | UI | Jetpack Compose, Material 3 (BOM 2024.12.01) |
 | Navigation | Navigation Compose |
