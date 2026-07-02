@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.finoria.app.data.model.Account
 import com.finoria.app.data.model.AccountStyle
+import com.finoria.app.ui.components.ConfirmationDialog
 import com.finoria.app.ui.components.StylePickerGrid
 import com.finoria.app.viewmodel.MainViewModel
 
@@ -46,6 +47,7 @@ fun AddAccountSheet(
     var name by remember { mutableStateOf(accountToEdit?.name ?: "") }
     var detail by remember { mutableStateOf(accountToEdit?.detail ?: "") }
     var style by remember { mutableStateOf(accountToEdit?.style ?: AccountStyle.BANK) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -144,10 +146,7 @@ fun AddAccountSheet(
             if (isEdit) {
                 Spacer(Modifier.height(24.dp))
                 TextButton(
-                    onClick = {
-                        viewModel.deleteAccount(accountToEdit!!)
-                        onDismiss()
-                    },
+                    onClick = { showDeleteConfirmation = true },
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
                     )
@@ -159,5 +158,18 @@ fun AddAccountSheet(
 
             Spacer(Modifier.height(32.dp))
         }
+    }
+
+    if (showDeleteConfirmation && accountToEdit != null) {
+        ConfirmationDialog(
+            title = "Supprimer le compte",
+            message = "Le compte « ${accountToEdit.name} » et toutes ses données seront définitivement supprimés. Cette action est irréversible.",
+            confirmText = "Supprimer",
+            onConfirm = {
+                viewModel.deleteAccount(accountToEdit)
+                onDismiss()
+            },
+            onDismiss = { showDeleteConfirmation = false }
+        )
     }
 }

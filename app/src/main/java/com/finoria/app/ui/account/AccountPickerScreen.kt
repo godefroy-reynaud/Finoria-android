@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.finoria.app.data.model.Account
+import com.finoria.app.ui.components.ConfirmationDialog
 import com.finoria.app.viewmodel.MainViewModel
 
 /**
@@ -44,6 +45,8 @@ fun AccountPickerSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var contextMenuAccount by remember { mutableStateOf<Account?>(null) }
+    var accountToReset by remember { mutableStateOf<Account?>(null) }
+    var accountToDelete by remember { mutableStateOf<Account?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -88,14 +91,14 @@ fun AccountPickerSheet(
                         text = { Text("Réinitialiser") },
                         onClick = {
                             contextMenuAccount = null
-                            viewModel.resetAccount(account)
+                            accountToReset = account
                         }
                     )
                     DropdownMenuItem(
                         text = { Text("Supprimer", color = MaterialTheme.colorScheme.error) },
                         onClick = {
                             contextMenuAccount = null
-                            viewModel.deleteAccount(account)
+                            accountToDelete = account
                         }
                     )
                 }
@@ -114,5 +117,25 @@ fun AccountPickerSheet(
                 Spacer(Modifier.height(24.dp))
             }
         }
+    }
+
+    accountToReset?.let { account ->
+        ConfirmationDialog(
+            title = "Réinitialiser le compte",
+            message = "Toutes les transactions, récurrences et raccourcis du compte « ${account.name} » seront définitivement supprimés. Le compte sera conservé. Cette action est irréversible.",
+            confirmText = "Réinitialiser",
+            onConfirm = { viewModel.resetAccount(account) },
+            onDismiss = { accountToReset = null }
+        )
+    }
+
+    accountToDelete?.let { account ->
+        ConfirmationDialog(
+            title = "Supprimer le compte",
+            message = "Le compte « ${account.name} » et toutes ses données seront définitivement supprimés. Cette action est irréversible.",
+            confirmText = "Supprimer",
+            onConfirm = { viewModel.deleteAccount(account) },
+            onDismiss = { accountToDelete = null }
+        )
     }
 }
