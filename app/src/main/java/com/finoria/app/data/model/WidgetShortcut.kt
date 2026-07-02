@@ -14,5 +14,8 @@ data class WidgetShortcut(
     val amount: Double,
     val comment: String,
     val type: TransactionType,
-    val category: TransactionCategory = TransactionCategory.guessFrom(comment, type)
+    val category: TransactionCategory = TransactionCategory.guessFrom(comment, type),
+    /** Catégorie personnalisée optionnelle (nullify à la suppression de celle-ci). */
+    @Serializable(with = UUIDSerializer::class)
+    val customCategoryId: UUID? = null
 )

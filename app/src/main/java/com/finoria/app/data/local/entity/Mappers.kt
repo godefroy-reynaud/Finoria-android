@@ -1,6 +1,7 @@
 package com.finoria.app.data.local.entity
 
 import com.finoria.app.data.model.Account
+import com.finoria.app.data.model.CustomCategory
 import com.finoria.app.data.model.RecurringTransaction
 import com.finoria.app.data.model.Transaction
 import com.finoria.app.data.model.WidgetShortcut
@@ -38,6 +39,8 @@ fun TransactionEntity.toDomain(): Transaction =
         date = date,
         category = category,
         recurringTransactionId = sourceRecurringId?.let(UUID::fromString),
+        customCategoryId = customCategoryId?.let(UUID::fromString),
+        importedCategoryName = importedCategoryName,
     )
 
 fun Transaction.toEntity(accountId: UUID): TransactionEntity =
@@ -50,6 +53,8 @@ fun Transaction.toEntity(accountId: UUID): TransactionEntity =
         date = date,
         category = category,
         sourceRecurringId = recurringTransactionId?.toString(),
+        customCategoryId = customCategoryId?.toString(),
+        importedCategoryName = importedCategoryName,
     )
 
 fun RecurringTransactionEntity.toDomain(): RecurringTransaction =
@@ -63,6 +68,7 @@ fun RecurringTransactionEntity.toDomain(): RecurringTransaction =
         startDate = startDate,
         lastGeneratedDate = lastGeneratedDate,
         isPaused = isPaused,
+        customCategoryId = customCategoryId?.let(UUID::fromString),
     )
 
 fun RecurringTransaction.toEntity(accountId: UUID): RecurringTransactionEntity =
@@ -77,6 +83,7 @@ fun RecurringTransaction.toEntity(accountId: UUID): RecurringTransactionEntity =
         startDate = startDate,
         lastGeneratedDate = lastGeneratedDate,
         isPaused = isPaused,
+        customCategoryId = customCategoryId?.toString(),
     )
 
 fun WidgetShortcutEntity.toDomain(): WidgetShortcut =
@@ -86,6 +93,7 @@ fun WidgetShortcutEntity.toDomain(): WidgetShortcut =
         comment = comment,
         type = type,
         category = category,
+        customCategoryId = customCategoryId?.let(UUID::fromString),
     )
 
 fun WidgetShortcut.toEntity(accountId: UUID): WidgetShortcutEntity =
@@ -96,4 +104,22 @@ fun WidgetShortcut.toEntity(accountId: UUID): WidgetShortcutEntity =
         comment = comment,
         type = type,
         category = category,
+        customCategoryId = customCategoryId?.toString(),
+    )
+
+fun CustomCategoryEntity.toDomain(): CustomCategory =
+    CustomCategory(
+        id = UUID.fromString(id),
+        name = name,
+        symbol = symbol,
+        colorHex = colorHex,
+    )
+
+fun CustomCategory.toEntity(accountId: UUID): CustomCategoryEntity =
+    CustomCategoryEntity(
+        id = id.toString(),
+        accountId = accountId.toString(),
+        name = name,
+        symbol = symbol,
+        colorHex = colorHex,
     )

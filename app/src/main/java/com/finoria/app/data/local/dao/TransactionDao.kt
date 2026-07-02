@@ -16,6 +16,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions")
     suspend fun getAll(): List<TransactionEntity>
 
+    @Query("SELECT * FROM transactions WHERE accountId = :accountId")
+    suspend fun getForAccount(accountId: String): List<TransactionEntity>
+
     @Upsert
     suspend fun upsert(transaction: TransactionEntity)
 

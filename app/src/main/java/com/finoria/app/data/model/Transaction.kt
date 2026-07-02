@@ -21,7 +21,19 @@ data class Transaction(
     val date: LocalDate? = null,
     val category: TransactionCategory = TransactionCategory.OTHER,
     @Serializable(with = UUIDSerializer::class)
-    val recurringTransactionId: UUID? = null
+    val recurringTransactionId: UUID? = null,
+    /**
+     * Référence optionnelle vers une catégorie personnalisée du compte.
+     * Quand elle est non nulle, [category] vaut `OTHER` par convention et
+     * l'affichage utilise le nom/icône/couleur de la catégorie personnalisée.
+     */
+    @Serializable(with = UUIDSerializer::class)
+    val customCategoryId: UUID? = null,
+    /**
+     * Champ temporaire d'import CSV : libellé de catégorie inconnu, mémorisé à la
+     * lecture puis résolu en vraie catégorie personnalisée au commit (remis à null).
+     */
+    val importedCategoryName: String? = null
 ) {
     /** Retourne une copie validée (non potentielle avec date) */
     fun validated(at: LocalDate = LocalDate.now()): Transaction =

@@ -35,6 +35,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.finoria.app.data.model.Account
+import com.finoria.app.data.model.CustomCategory
 import com.finoria.app.data.model.Transaction
 import com.finoria.app.navigation.BottomNavItem
 import com.finoria.app.navigation.FinoriaNavHost
@@ -52,6 +53,18 @@ val LocalSnackbarHostState = compositionLocalOf<SnackbarHostState> {
 }
 
 /**
+ * Catégories personnalisées du **compte sélectionné**, indexées par id.
+ *
+ * Fourni au sommet de l'arbre pour que tous les points d'affichage d'une
+ * transaction/raccourci/récurrence (lignes, grilles, aperçu d'import) puissent
+ * résoudre `customCategoryId` → nom/icône/couleur sans faire transiter la map
+ * par toutes les signatures.
+ */
+val LocalCustomCategories = compositionLocalOf<Map<java.util.UUID, CustomCategory>> {
+    emptyMap()
+}
+
+/**
  * Écran principal de l'application.
  * Scaffold + NavigationBar (4 items) + FAB + SnackbarHost + NavHost.
  * Gère l'affichage des modales (ajout transaction, sélection compte, ajout compte).
@@ -63,6 +76,10 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
 
     val selectedAccountId by viewModel.selectedAccountId.collectAsStateWithLifecycle()
+    val customCategories by viewModel.currentCustomCategories.collectAsStateWithLifecycle()
+    val customCategoriesById = remember(customCategories) {
+        customCategories.associateBy { it.id }
+    }
 
     // ─── Modal state ─────────────────────────────────────────────
     var showAddTransaction by remember { mutableStateOf(false) }
@@ -85,7 +102,10 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
         viewModel.processRecurringTransactions()
     }
 
-    CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
+    CompositionLocalProvider(
+        LocalSnackbarHostState provides snackbarHostState,
+        LocalCustomCategories provides customCategoriesById,
+    ) {
         Scaffold(
             bottomBar = {
                 AnimatedVisibility(

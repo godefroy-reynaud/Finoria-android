@@ -11,7 +11,8 @@ data class TransactionManager(
     val accountName: String,
     val transactions: MutableList<Transaction> = mutableListOf(),
     val widgetShortcuts: MutableList<WidgetShortcut> = mutableListOf(),
-    val recurringTransactions: MutableList<RecurringTransaction> = mutableListOf()
+    val recurringTransactions: MutableList<RecurringTransaction> = mutableListOf(),
+    val customCategories: MutableList<CustomCategory> = mutableListOf()
 ) {
     fun addTransaction(transaction: Transaction) {
         transactions.add(transaction)

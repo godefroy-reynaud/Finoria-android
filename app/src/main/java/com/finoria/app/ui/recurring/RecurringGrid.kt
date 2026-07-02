@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.finoria.app.data.model.RecurringTransaction
+import com.finoria.app.ui.LocalCustomCategories
 import com.finoria.app.ui.components.StyleIconView
 import com.finoria.app.util.formattedCurrency
 
@@ -85,7 +86,12 @@ fun RecurringGrid(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            StyleIconView(style = recurring.category, size = 28.dp)
+                            StyleIconView(
+                                style = recurring.customCategoryId
+                                    ?.let { LocalCustomCategories.current[it] }
+                                    ?: recurring.category,
+                                size = 28.dp
+                            )
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = recurring.comment,

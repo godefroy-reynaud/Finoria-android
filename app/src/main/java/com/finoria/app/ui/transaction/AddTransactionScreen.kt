@@ -38,10 +38,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.finoria.app.data.model.CustomCategory
 import com.finoria.app.data.model.Transaction
 import com.finoria.app.data.model.TransactionCategory
 import com.finoria.app.data.model.TransactionType
 import com.finoria.app.ui.components.CurrencyTextField
+import com.finoria.app.ui.components.CustomCategorySheet
 import com.finoria.app.ui.components.TransactionCategoryPicker
 import com.finoria.app.viewmodel.MainViewModel
 import java.time.Instant
@@ -76,8 +79,14 @@ fun AddTransactionScreen(
     var category by remember {
         mutableStateOf(transactionToEdit?.category ?: TransactionCategory.OTHER)
     }
+    var customCategoryId by remember { mutableStateOf(transactionToEdit?.customCategoryId) }
     var isPotentiel by remember { mutableStateOf(transactionToEdit?.potentiel ?: false) }
     var manualCategory by remember { mutableStateOf(transactionToEdit != null) }
+
+    // Catégories personnalisées du compte + sheet de création/édition.
+    val customCategories by viewModel.currentCustomCategories.collectAsStateWithLifecycle()
+    var showCategorySheet by remember { mutableStateOf(false) }
+    var categoryToEdit by remember { mutableStateOf<CustomCategory?>(null) }
 
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = transactionToEdit?.date?.let {
@@ -107,9 +116,13 @@ fun AddTransactionScreen(
                                 } ?: LocalDate.now()
                             } else null
 
-                            val finalCategory = if (!manualCategory) {
-                                TransactionCategory.guessFrom(comment, type)
-                            } else category
+                            // Convention iOS : catégorie perso sélectionnée → la
+                            // catégorie par défaut est forcée sur « Autre ».
+                            val finalCategory = when {
+                                customCategoryId != null -> TransactionCategory.OTHER
+                                !manualCategory -> TransactionCategory.guessFrom(comment, type)
+                                else -> category
+                            }
 
                             val transaction = Transaction(
                                 id = transactionToEdit?.id ?: java.util.UUID.randomUUID(),
@@ -118,7 +131,12 @@ fun AddTransactionScreen(
                                 potentiel = isPotentiel,
                                 date = selectedDate,
                                 category = finalCategory,
-                                recurringTransactionId = transactionToEdit?.recurringTransactionId
+                                recurringTransactionId = transactionToEdit?.recurringTransactionId,
+                                customCategoryId = customCategoryId,
+                                // Rattaché à une vraie catégorie → le libellé
+                                // importé en attente n'a plus lieu d'être.
+                                importedCategoryName = if (customCategoryId != null) null
+                                else transactionToEdit?.importedCategoryName
                             )
 
                             if (isEdit) {
@@ -149,7 +167,7 @@ fun AddTransactionScreen(
                         selected = type == txType,
                         onClick = {
                             type = txType
-                            if (!manualCategory) {
+                            if (!manualCategory && customCategoryId == null) {
                                 category = TransactionCategory.guessFrom(comment, txType)
                             }
                         },
@@ -180,7 +198,7 @@ fun AddTransactionScreen(
                 onValueChange = {
                     if (it.length <= 30) {
                         comment = it
-                        if (!manualCategory) {
+                        if (!manualCategory && customCategoryId == null) {
                             category = TransactionCategory.guessFrom(it, type)
                         }
                     }
@@ -198,10 +216,34 @@ fun AddTransactionScreen(
             Spacer(Modifier.height(8.dp))
 
             TransactionCategoryPicker(
-                selected = category,
-                onSelect = {
+                selectedCategory = category,
+                selectedCustomCategoryId = customCategoryId,
+                customCategories = customCategories,
+                onSelectDefault = {
                     category = it
+                    customCategoryId = null
                     manualCategory = true
+                },
+                onSelectCustom = {
+                    category = TransactionCategory.OTHER
+                    customCategoryId = it.id
+                    manualCategory = true
+                },
+                onAddCustom = {
+                    categoryToEdit = null
+                    showCategorySheet = true
+                },
+                onEditCustom = {
+                    categoryToEdit = it
+                    showCategorySheet = true
+                },
+                onDeleteCustom = { deleted ->
+                    viewModel.removeCustomCategory(deleted)
+                    // La sélection courante retombe sur « Autre ».
+                    if (customCategoryId == deleted.id) {
+                        customCategoryId = null
+                        category = TransactionCategory.OTHER
+                    }
                 }
             )
 
@@ -250,5 +292,27 @@ fun AddTransactionScreen(
 
             Spacer(Modifier.height(32.dp))
         }
+    }
+
+    // ─── Sheet catégorie personnalisée (création/édition) ───────────
+    if (showCategorySheet) {
+        CustomCategorySheet(
+            categoryToEdit = categoryToEdit,
+            existingCategories = customCategories,
+            onSave = { saved ->
+                if (categoryToEdit == null) viewModel.addCustomCategory(saved)
+                else viewModel.updateCustomCategory(saved)
+                // La catégorie créée/éditée devient la sélection courante.
+                category = TransactionCategory.OTHER
+                customCategoryId = saved.id
+                manualCategory = true
+                showCategorySheet = false
+                categoryToEdit = null
+            },
+            onDismiss = {
+                showCategorySheet = false
+                categoryToEdit = null
+            }
+        )
     }
 }

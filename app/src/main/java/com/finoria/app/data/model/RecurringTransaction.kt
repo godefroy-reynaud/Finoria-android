@@ -22,7 +22,10 @@ data class RecurringTransaction(
     val startDate: LocalDate = LocalDate.now(),
     @Serializable(with = LocalDateSerializer::class)
     val lastGeneratedDate: LocalDate? = null,
-    val isPaused: Boolean = false
+    val isPaused: Boolean = false,
+    /** Catégorie personnalisée optionnelle (nullify à la suppression de celle-ci). */
+    @Serializable(with = UUIDSerializer::class)
+    val customCategoryId: UUID? = null
 ) {
     /**
      * Date de la n-ième occurrence, **ancrée sur [startDate]**.
@@ -73,7 +76,8 @@ data class RecurringTransaction(
                 potentiel = date.isAfter(LocalDate.now()),
                 date = date,
                 category = category,
-                recurringTransactionId = id
+                recurringTransactionId = id,
+                customCategoryId = customCategoryId
             )
         }
     }

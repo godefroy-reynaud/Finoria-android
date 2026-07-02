@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.finoria.app.data.model.Account
 import com.finoria.app.data.model.AnalysisType
 import com.finoria.app.data.model.CategoryData
+import com.finoria.app.data.model.CustomCategory
 import com.finoria.app.data.model.RecurringTransaction
 import com.finoria.app.data.model.Transaction
 import com.finoria.app.data.model.TransactionManager
@@ -61,6 +62,10 @@ class MainViewModel @Inject constructor(
 
     val currentRecurring: StateFlow<List<RecurringTransaction>> = currentManager.map {
         it?.recurringTransactions.orEmpty()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val currentCustomCategories: StateFlow<List<CustomCategory>> = currentManager.map {
+        it?.customCategories.orEmpty()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // ─── Initialization ──────────────────────────────────────────────
@@ -196,9 +201,26 @@ class MainViewModel @Inject constructor(
                 comment = shortcut.comment,
                 potentiel = false,
                 date = java.time.LocalDate.now(),
-                category = shortcut.category
+                category = shortcut.category,
+                customCategoryId = shortcut.customCategoryId
             )
         )
+    }
+
+    // ─── Custom category actions ─────────────────────────────────────
+
+    fun addCustomCategory(category: CustomCategory) {
+        val accountId = selectedAccountId.value ?: return
+        viewModelScope.launch { repository.addCustomCategory(accountId, category) }
+    }
+
+    fun updateCustomCategory(category: CustomCategory) {
+        val accountId = selectedAccountId.value ?: return
+        viewModelScope.launch { repository.updateCustomCategory(accountId, category) }
+    }
+
+    fun removeCustomCategory(category: CustomCategory) {
+        viewModelScope.launch { repository.removeCustomCategory(category) }
     }
 
     // ─── Recurring actions ───────────────────────────────────────────

@@ -31,10 +31,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.finoria.app.data.model.CustomCategory
 import com.finoria.app.data.model.TransactionCategory
 import com.finoria.app.data.model.TransactionType
 import com.finoria.app.data.model.WidgetShortcut
 import com.finoria.app.ui.components.CurrencyTextField
+import com.finoria.app.ui.components.CustomCategorySheet
 import com.finoria.app.ui.components.TransactionCategoryPicker
 import com.finoria.app.viewmodel.MainViewModel
 import kotlin.math.abs
@@ -63,6 +66,11 @@ fun AddShortcutScreen(
     var category by remember {
         mutableStateOf(shortcutToEdit?.category ?: TransactionCategory.OTHER)
     }
+    var customCategoryId by remember { mutableStateOf(shortcutToEdit?.customCategoryId) }
+
+    val customCategories by viewModel.currentCustomCategories.collectAsStateWithLifecycle()
+    var showCategorySheet by remember { mutableStateOf(false) }
+    var categoryToEdit by remember { mutableStateOf<CustomCategory?>(null) }
 
     Scaffold(
         topBar = {
@@ -82,7 +90,10 @@ fun AddShortcutScreen(
                                 amount = amount,
                                 comment = comment,
                                 type = type,
-                                category = category
+                                category = if (customCategoryId != null) {
+                                    TransactionCategory.OTHER
+                                } else category,
+                                customCategoryId = customCategoryId
                             )
                             if (isEdit) viewModel.updateShortcut(shortcut)
                             else viewModel.addShortcut(shortcut)
@@ -137,8 +148,32 @@ fun AddShortcutScreen(
             Spacer(Modifier.height(8.dp))
 
             TransactionCategoryPicker(
-                selected = category,
-                onSelect = { category = it }
+                selectedCategory = category,
+                selectedCustomCategoryId = customCategoryId,
+                customCategories = customCategories,
+                onSelectDefault = {
+                    category = it
+                    customCategoryId = null
+                },
+                onSelectCustom = {
+                    category = TransactionCategory.OTHER
+                    customCategoryId = it.id
+                },
+                onAddCustom = {
+                    categoryToEdit = null
+                    showCategorySheet = true
+                },
+                onEditCustom = {
+                    categoryToEdit = it
+                    showCategorySheet = true
+                },
+                onDeleteCustom = { deleted ->
+                    viewModel.removeCustomCategory(deleted)
+                    if (customCategoryId == deleted.id) {
+                        customCategoryId = null
+                        category = TransactionCategory.OTHER
+                    }
+                }
             )
 
             if (isEdit) {
@@ -160,5 +195,24 @@ fun AddShortcutScreen(
 
             Spacer(Modifier.height(32.dp))
         }
+    }
+
+    if (showCategorySheet) {
+        CustomCategorySheet(
+            categoryToEdit = categoryToEdit,
+            existingCategories = customCategories,
+            onSave = { saved ->
+                if (categoryToEdit == null) viewModel.addCustomCategory(saved)
+                else viewModel.updateCustomCategory(saved)
+                category = TransactionCategory.OTHER
+                customCategoryId = saved.id
+                showCategorySheet = false
+                categoryToEdit = null
+            },
+            onDismiss = {
+                showCategorySheet = false
+                categoryToEdit = null
+            }
+        )
     }
 }

@@ -19,15 +19,20 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.finoria.app.data.model.CustomCategory
 import com.finoria.app.data.model.Transaction
+import com.finoria.app.ui.LocalCustomCategories
 import com.finoria.app.ui.components.TransactionRow
 
 /**
- * Écran de prévisualisation des transactions importées depuis un CSV.
- * Affiche la liste avec un bouton retour et un bouton de confirmation.
+ * Écran de prévisualisation des transactions importées depuis un CSV (étape 1 de
+ * l'import : rien n'est encore en base). Affiche la liste, annonce les catégories
+ * personnalisées qui seront **créées automatiquement** au commit, et avertit que
+ * réimporter le même fichier crée des doublons (pas de dé-duplication).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +41,19 @@ fun CsvImportPreviewScreen(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    // Libellés inconnus → catégories qui seront créées (dé-dupliquées par nom
+    // normalisé, en excluant celles qui existent déjà sur le compte).
+    val existingCategories = LocalCustomCategories.current
+    val categoriesToCreate = remember(transactions, existingCategories) {
+        val existingKeys = existingCategories.values
+            .map { CustomCategory.normalizeName(it.name) }
+            .toSet()
+        transactions
+            .mapNotNull { it.importedCategoryName }
+            .distinctBy { CustomCategory.normalizeName(it) }
+            .filter { CustomCategory.normalizeName(it) !in existingKeys }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -63,6 +81,25 @@ fun CsvImportPreviewScreen(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+                if (categoriesToCreate.isNotEmpty()) {
+                    val prefix = if (categoriesToCreate.size > 1) {
+                        "${categoriesToCreate.size} catégories personnalisées seront créées"
+                    } else {
+                        "1 catégorie personnalisée sera créée"
+                    }
+                    Text(
+                        text = "$prefix : ${categoriesToCreate.joinToString(", ")}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+                Text(
+                    text = "⚠️ Réimporter un fichier déjà importé créera des doublons.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
             }
 

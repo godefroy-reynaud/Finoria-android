@@ -62,6 +62,10 @@ fun HomeTabScreen(
     val selectedAccount by viewModel.selectedAccount.collectAsStateWithLifecycle()
     val transactions by viewModel.currentTransactions.collectAsStateWithLifecycle()
     val isInitialized by viewModel.isInitialized.collectAsStateWithLifecycle()
+    val customCategories by viewModel.currentCustomCategories.collectAsStateWithLifecycle()
+    val customCategoriesById = remember(customCategories) {
+        customCategories.associateBy { it.id }
+    }
 
     // Sheet states for shortcuts and recurring editing
     var shortcutToEdit by remember { mutableStateOf<WidgetShortcut?>(null) }
@@ -97,7 +101,7 @@ fun HomeTabScreen(
         contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri ->
         uri?.let {
-            val success = CsvService.writeCsvToUri(it, transactions, context)
+            val success = CsvService.writeCsvToUri(it, transactions, context, customCategoriesById)
             scope.launch {
                 snackbarHostState.showSnackbar(
                     if (success) "CSV enregistré" else "Échec de l'enregistrement"
@@ -168,7 +172,8 @@ fun HomeTabScreen(
                                             val uri = CsvService.generateCsv(
                                                 transactions,
                                                 selectedAccount?.name ?: "export",
-                                                context
+                                                context,
+                                                customCategoriesById
                                             )
                                             if (uri != null) {
                                                 val shareIntent = Intent(Intent.ACTION_SEND).apply {

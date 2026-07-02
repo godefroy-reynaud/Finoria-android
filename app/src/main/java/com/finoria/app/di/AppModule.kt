@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.finoria.app.data.local.FinoriaDatabase
 import com.finoria.app.data.local.StorageService
 import com.finoria.app.data.local.dao.AccountDao
+import com.finoria.app.data.local.dao.CustomCategoryDao
 import com.finoria.app.data.local.dao.RecurringTransactionDao
 import com.finoria.app.data.local.dao.TransactionDao
 import com.finoria.app.data.local.dao.WidgetShortcutDao
@@ -25,6 +26,7 @@ object AppModule {
         Room.databaseBuilder(context, FinoriaDatabase::class.java, FinoriaDatabase.NAME)
             // Room active `PRAGMA foreign_keys=ON` : CASCADE / SET_NULL appliqués.
             // Pas de fallbackToDestructiveMigration : zéro perte de données.
+            .addMigrations(FinoriaDatabase.MIGRATION_1_2)
             .build()
 
     @Provides
@@ -39,6 +41,9 @@ object AppModule {
 
     @Provides
     fun provideWidgetShortcutDao(db: FinoriaDatabase): WidgetShortcutDao = db.widgetShortcutDao()
+
+    @Provides
+    fun provideCustomCategoryDao(db: FinoriaDatabase): CustomCategoryDao = db.customCategoryDao()
 
     @Provides
     @Singleton

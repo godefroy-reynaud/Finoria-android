@@ -10,7 +10,8 @@ import com.finoria.app.data.model.TransactionType
 import java.time.LocalDate
 
 /**
- * Récurrence — enfant d'Account (cascade à la suppression du compte).
+ * Récurrence — enfant d'Account (cascade à la suppression du compte). La catégorie
+ * personnalisée est en **nullify** (SET_NULL à la suppression de celle-ci).
  */
 @Entity(
     tableName = "recurring_transactions",
@@ -21,8 +22,14 @@ import java.time.LocalDate
             childColumns = ["accountId"],
             onDelete = ForeignKey.CASCADE,
         ),
+        ForeignKey(
+            entity = CustomCategoryEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["customCategoryId"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
     ],
-    indices = [Index("accountId")],
+    indices = [Index("accountId"), Index("customCategoryId")],
 )
 data class RecurringTransactionEntity(
     @PrimaryKey val id: String,
@@ -35,4 +42,5 @@ data class RecurringTransactionEntity(
     val startDate: LocalDate,
     val lastGeneratedDate: LocalDate?,
     val isPaused: Boolean,
+    val customCategoryId: String? = null,
 )

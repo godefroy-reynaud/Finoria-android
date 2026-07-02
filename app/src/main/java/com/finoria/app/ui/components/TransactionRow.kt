@@ -12,7 +12,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.finoria.app.data.model.CustomCategory
 import com.finoria.app.data.model.Transaction
+import com.finoria.app.ui.LocalCustomCategories
 import com.finoria.app.ui.theme.ExpenseRed
 import com.finoria.app.ui.theme.IncomeGreen
 import com.finoria.app.util.formattedCurrency
@@ -21,6 +23,12 @@ import com.finoria.app.util.shortFormatted
 /**
  * Ligne d'affichage d'une transaction.
  * Icône catégorie + commentaire + date + montant coloré.
+ *
+ * Règle d'affichage du portage : si la transaction porte une **catégorie
+ * personnalisée**, son nom/icône/couleur remplacent ceux de la catégorie par
+ * défaut. Un libellé importé pas encore résolu (`importedCategoryName`) est
+ * affiché avec le style par défaut des catégories perso (étiquette grise) —
+ * utile dans l'aperçu d'import CSV.
  */
 @Composable
 fun TransactionRow(
@@ -28,6 +36,11 @@ fun TransactionRow(
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val displayStyle = transaction.customCategoryId
+        ?.let { LocalCustomCategories.current[it] }
+        ?: transaction.importedCategoryName?.let { CustomCategory(name = it) }
+        ?: transaction.category
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -36,11 +49,11 @@ fun TransactionRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        StyleIconView(style = transaction.category, size = 36.dp)
+        StyleIconView(style = displayStyle, size = 36.dp)
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = transaction.comment.ifEmpty { transaction.category.labelText },
+                text = transaction.comment.ifEmpty { displayStyle.label },
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1
             )

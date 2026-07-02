@@ -3,6 +3,7 @@ package com.finoria.app.domain.service
 import android.content.Context
 import android.net.Uri
 import androidx.core.content.FileProvider
+import com.finoria.app.data.model.CustomCategory
 import com.finoria.app.data.model.Transaction
 import com.finoria.app.data.model.TransactionCategory
 import java.io.BufferedReader
@@ -11,6 +12,7 @@ import java.io.InputStreamReader
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.UUID
 
 /**
  * Service d'export/import CSV.
@@ -37,9 +39,18 @@ object CsvService {
      *
      * On **exclut** les transactions potentielles et celles générées par une
      * récurrence. Tri par date décroissante (sans date en dernier).
+     *
+     * La colonne `Catégorie` écrit le libellé **affiché** : le nom de la catégorie
+     * personnalisée si la transaction en porte une (résolue via
+     * [customCategories]), sinon le libellé de la catégorie par défaut. C'est ce
+     * nom que l'import saura re-rattacher (ou re-créer) automatiquement.
+     *
      * Retourne null s'il n'y a rien à exporter.
      */
-    fun buildCsvContent(transactions: List<Transaction>): String? {
+    fun buildCsvContent(
+        transactions: List<Transaction>,
+        customCategories: Map<UUID, CustomCategory> = emptyMap()
+    ): String? {
         val exportable = transactions.filter { !it.potentiel && it.recurringTransactionId == null }
         if (exportable.isEmpty()) return null
 
@@ -51,10 +62,13 @@ object CsvService {
             val dateStr = tx.date?.format(formatter) ?: "N/A"
             // Montant signé, décimale = virgule → escapeCsv l'entoure de guillemets.
             val amount = String.format(Locale.FRANCE, "%.2f", tx.amount)
+            val categoryLabel = tx.customCategoryId?.let { customCategories[it]?.name }
+                ?: tx.importedCategoryName // libellé importé pas encore résolu
+                ?: tx.category.labelText
             sb.append(dateStr).append(',')
                 .append(escapeCsv(amount)).append(',')
                 .append(escapeCsv(tx.comment)).append(',')
-                .append(escapeCsv(tx.category.labelText)).append('\n')
+                .append(escapeCsv(categoryLabel)).append('\n')
         }
 
         return sb.toString()
@@ -66,9 +80,10 @@ object CsvService {
     fun generateCsv(
         transactions: List<Transaction>,
         accountName: String,
-        context: Context
+        context: Context,
+        customCategories: Map<UUID, CustomCategory> = emptyMap()
     ): Uri? {
-        val content = buildCsvContent(transactions) ?: return null
+        val content = buildCsvContent(transactions, customCategories) ?: return null
 
         val csvDir = File(context.cacheDir, "csv")
         csvDir.mkdirs()
@@ -91,9 +106,10 @@ object CsvService {
     fun writeCsvToUri(
         uri: Uri,
         transactions: List<Transaction>,
-        context: Context
+        context: Context,
+        customCategories: Map<UUID, CustomCategory> = emptyMap()
     ): Boolean {
-        val content = buildCsvContent(transactions) ?: return false
+        val content = buildCsvContent(transactions, customCategories) ?: return false
         return try {
             context.contentResolver.openOutputStream(uri)?.use { output ->
                 output.write(content.toByteArray(Charsets.UTF_8))
@@ -104,14 +120,18 @@ object CsvService {
     }
 
     /**
-     * Importe les transactions depuis un fichier CSV (URI).
+     * Importe les transactions depuis un fichier CSV (URI). **Étape de lecture
+     * seule** : rien n'est écrit en base ici (le commit se fait après confirmation,
+     * via le repository qui crée les catégories personnalisées manquantes).
      *
      * Parsing RFC 4180 (respecte les guillemets/virgules échappés). Le montant est
      * déjà **signé** dans le fichier (dépense < 0, revenu ≥ 0) — il n'y a plus de
-     * colonne `Type`. La catégorie est résolue par correspondance de libellé avec
-     * les catégories par défaut ; un libellé inconnu retombe sur `Autre`. Les
-     * transactions importées sont validées ; une date `N/A` est remplacée par la
-     * date du jour.
+     * colonne `Type`. La catégorie est résolue par correspondance **normalisée**
+     * (casse/accents) avec les libellés des catégories par défaut ; un libellé
+     * inconnu non vide met la catégorie sur `Autre` et **mémorise le libellé brut**
+     * dans `importedCategoryName` (future catégorie personnalisée, résolue ou créée
+     * au commit). Les transactions importées sont validées ; une date `N/A` est
+     * remplacée par la date du jour.
      */
     fun importCsv(uri: Uri, context: Context): List<Transaction> {
         val transactions = mutableListOf<Transaction>()
@@ -134,9 +154,13 @@ object CsvService {
                     val amount = parts[1].trim().replace(",", ".").toDoubleOrNull()
                         ?: return@forEachLine
                     val comment = parts.getOrNull(2) ?: ""
-                    val category = parts.getOrNull(3)?.trim()?.takeIf { it.isNotEmpty() }
-                        ?.let { label -> TransactionCategory.entries.find { it.labelText == label } }
-                        ?: TransactionCategory.OTHER
+                    val rawCategory = parts.getOrNull(3)?.trim().orEmpty()
+                    val defaultCategory = rawCategory.takeIf { it.isNotEmpty() }?.let { label ->
+                        val key = CustomCategory.normalizeName(label)
+                        TransactionCategory.entries.find {
+                            CustomCategory.normalizeName(it.labelText) == key
+                        }
+                    }
 
                     transactions.add(
                         Transaction(
@@ -144,7 +168,11 @@ object CsvService {
                             comment = comment,
                             potentiel = false,
                             date = date ?: LocalDate.now(),
-                            category = category
+                            category = defaultCategory ?: TransactionCategory.OTHER,
+                            // Libellé inconnu → future catégorie personnalisée,
+                            // résolue/créée automatiquement au commit de l'import.
+                            importedCategoryName = rawCategory
+                                .takeIf { it.isNotEmpty() && defaultCategory == null }
                         )
                     )
                 } catch (_: Exception) {

@@ -8,7 +8,8 @@ import com.finoria.app.data.model.TransactionCategory
 import com.finoria.app.data.model.TransactionType
 
 /**
- * Raccourci — enfant d'Account (cascade à la suppression du compte).
+ * Raccourci — enfant d'Account (cascade à la suppression du compte). La catégorie
+ * personnalisée est en **nullify** (SET_NULL à la suppression de celle-ci).
  */
 @Entity(
     tableName = "widget_shortcuts",
@@ -19,8 +20,14 @@ import com.finoria.app.data.model.TransactionType
             childColumns = ["accountId"],
             onDelete = ForeignKey.CASCADE,
         ),
+        ForeignKey(
+            entity = CustomCategoryEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["customCategoryId"],
+            onDelete = ForeignKey.SET_NULL,
+        ),
     ],
-    indices = [Index("accountId")],
+    indices = [Index("accountId"), Index("customCategoryId")],
 )
 data class WidgetShortcutEntity(
     @PrimaryKey val id: String,
@@ -29,4 +36,5 @@ data class WidgetShortcutEntity(
     val comment: String,
     val type: TransactionType,
     val category: TransactionCategory,
+    val customCategoryId: String? = null,
 )

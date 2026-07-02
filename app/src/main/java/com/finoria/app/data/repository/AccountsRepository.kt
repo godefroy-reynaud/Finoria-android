@@ -2,14 +2,17 @@ package com.finoria.app.data.repository
 
 import com.finoria.app.data.local.StorageService
 import com.finoria.app.data.local.dao.AccountDao
+import com.finoria.app.data.local.dao.CustomCategoryDao
 import com.finoria.app.data.local.dao.RecurringTransactionDao
 import com.finoria.app.data.local.dao.TransactionDao
 import com.finoria.app.data.local.dao.WidgetShortcutDao
 import com.finoria.app.data.local.entity.toDomain
 import com.finoria.app.data.local.entity.toEntity
 import com.finoria.app.data.model.Account
+import com.finoria.app.data.model.CustomCategory
 import com.finoria.app.data.model.RecurringTransaction
 import com.finoria.app.data.model.Transaction
+import com.finoria.app.data.model.TransactionCategory
 import com.finoria.app.data.model.TransactionManager
 import com.finoria.app.data.model.WidgetShortcut
 import com.finoria.app.domain.service.RecurrenceEngine
@@ -44,6 +47,7 @@ class AccountsRepository @Inject constructor(
     private val transactionDao: TransactionDao,
     private val recurringDao: RecurringTransactionDao,
     private val shortcutDao: WidgetShortcutDao,
+    private val customCategoryDao: CustomCategoryDao,
     private val storage: StorageService,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -65,7 +69,8 @@ class AccountsRepository @Inject constructor(
         transactionDao.observeAll(),
         shortcutDao.observeAll(),
         recurringDao.observeAll(),
-    ) { accountEntities, txEntities, shortcutEntities, recurringEntities ->
+        customCategoryDao.observeAll(),
+    ) { accountEntities, txEntities, shortcutEntities, recurringEntities, customCategoryEntities ->
         accountEntities.associate { account ->
             UUID.fromString(account.id) to TransactionManager(
                 accountName = account.name,
@@ -78,6 +83,10 @@ class AccountsRepository @Inject constructor(
                     .map { it.toDomain() }
                     .toMutableList(),
                 recurringTransactions = recurringEntities.asSequence()
+                    .filter { it.accountId == account.id }
+                    .map { it.toDomain() }
+                    .toMutableList(),
+                customCategories = customCategoryEntities.asSequence()
                     .filter { it.accountId == account.id }
                     .map { it.toDomain() }
                     .toMutableList(),
@@ -232,10 +241,88 @@ class AccountsRepository @Inject constructor(
         }
     }
 
+    // ─── Custom category CRUD ────────────────────────────────────────
+
+    /**
+     * Crée une catégorie personnalisée puis **rattache automatiquement** les
+     * transactions du compte importées avec ce libellé (celles dont
+     * `importedCategoryName` correspond au nom normalisé) — « rattachement différé ».
+     */
+    suspend fun addCustomCategory(accountId: UUID, category: CustomCategory) {
+        customCategoryDao.upsert(category.toEntity(accountId))
+        relinkImportedTransactions(accountId, category)
+    }
+
+    /** Mise à jour nom/symbole/couleur + rattachement différé (comme la création). */
+    suspend fun updateCustomCategory(accountId: UUID, category: CustomCategory) {
+        customCategoryDao.upsert(category.toEntity(accountId))
+        relinkImportedTransactions(accountId, category)
+    }
+
+    /**
+     * Suppression = **nullify** : les transactions/raccourcis/récurrences qui la
+     * référençaient voient leur `customCategoryId` remis à null par la FK SET_NULL
+     * (elles retombent sur la catégorie par défaut `Autre`).
+     */
+    suspend fun removeCustomCategory(category: CustomCategory) {
+        customCategoryDao.deleteById(category.id.toString())
+    }
+
+    /**
+     * Rattache à [category] toutes les transactions du compte dont le
+     * `importedCategoryName` (encore présent) a le même nom normalisé.
+     */
+    private suspend fun relinkImportedTransactions(accountId: UUID, category: CustomCategory) {
+        val key = CustomCategory.normalizeName(category.name)
+        transactionDao.getForAccount(accountId.toString())
+            .filter { entity ->
+                entity.importedCategoryName
+                    ?.let { CustomCategory.normalizeName(it) == key } == true
+            }
+            .forEach { entity ->
+                transactionDao.upsert(
+                    entity.copy(
+                        customCategoryId = category.id.toString(),
+                        category = TransactionCategory.OTHER,
+                        importedCategoryName = null,
+                    )
+                )
+            }
+    }
+
     // ─── Bulk operations ─────────────────────────────────────────────
 
+    /**
+     * Commit de l'import CSV. Les transactions portant un `importedCategoryName`
+     * (libellé inconnu des catégories par défaut) sont rattachées à une catégorie
+     * personnalisée **résolue ou créée automatiquement** (symbole/couleur par
+     * défaut), dé-dupliquée par nom normalisé — y compris entre lignes du même
+     * import. Le champ temporaire est effacé une fois le rattachement fait.
+     */
     suspend fun importTransactions(accountId: UUID, transactions: List<Transaction>) {
-        transactionDao.insertAll(transactions.map { it.toEntity(accountId) })
+        val existing = customCategoryDao.getForAccount(accountId.toString())
+        val cache = existing
+            .associateBy { CustomCategory.normalizeName(it.name) }
+            .toMutableMap()
+
+        val resolved = transactions.map { tx ->
+            val label = tx.importedCategoryName?.trim()?.takeIf { it.isNotEmpty() }
+                ?: return@map tx.copy(importedCategoryName = null)
+
+            val key = CustomCategory.normalizeName(label)
+            val categoryEntity = cache.getOrPut(key) {
+                val created = CustomCategory(name = label).toEntity(accountId)
+                customCategoryDao.upsert(created)
+                created
+            }
+            tx.copy(
+                customCategoryId = UUID.fromString(categoryEntity.id),
+                category = TransactionCategory.OTHER,
+                importedCategoryName = null,
+            )
+        }
+
+        transactionDao.insertAll(resolved.map { it.toEntity(accountId) })
     }
 
     // ─── Recurring processing ────────────────────────────────────────

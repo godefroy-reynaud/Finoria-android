@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.finoria.app.data.model.WidgetShortcut
+import com.finoria.app.ui.LocalCustomCategories
 import com.finoria.app.ui.components.StyleIconView
 import com.finoria.app.util.formattedCurrency
 
@@ -96,7 +97,12 @@ fun ShortcutsGrid(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        StyleIconView(style = shortcut.category, size = 32.dp)
+                        StyleIconView(
+                            style = shortcut.customCategoryId
+                                ?.let { LocalCustomCategories.current[it] }
+                                ?: shortcut.category,
+                            size = 32.dp
+                        )
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = shortcut.comment,
