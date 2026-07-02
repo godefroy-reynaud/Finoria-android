@@ -231,12 +231,18 @@ class AccountsRepository @Inject constructor(
     }
 
     suspend fun togglePauseRecurring(accountId: UUID, recurring: RecurringTransaction) {
-        val updated = recurring.copy(isPaused = !recurring.isPaused)
-        if (updated.isPaused) {
+        if (!recurring.isPaused) {
+            // Mise en pause : on retire les occurrences futures (potentielles).
             transactionDao.deletePotentialForRecurring(recurring.id.toString())
-            recurringDao.upsert(updated.toEntity(accountId))
+            recurringDao.upsert(recurring.copy(isPaused = true).toEntity(accountId))
         } else {
-            recurringDao.upsert(updated.toEntity(accountId))
+            // Reprise : on repart comme une récurrence fraîchement créée
+            // (lastGeneratedDate = null) afin de régénérer les prochaines
+            // occurrences. Les occurrences passées déjà validées ne sont pas
+            // dupliquées grâce au garde-fou `exists` du RecurrenceEngine.
+            recurringDao.upsert(
+                recurring.copy(isPaused = false, lastGeneratedDate = null).toEntity(accountId)
+            )
             processRecurrences()
         }
     }

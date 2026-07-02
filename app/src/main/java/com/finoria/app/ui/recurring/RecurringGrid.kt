@@ -1,7 +1,9 @@
 package com.finoria.app.ui.recurring
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.finoria.app.data.model.RecurringTransaction
@@ -67,6 +70,9 @@ fun RecurringGrid(
         ) {
             items(recurrings, key = { it.id }) { recurring ->
                 var showMenu by remember { mutableStateOf(false) }
+                val paused = recurring.isPaused
+                // En pause : tout est grisé (plus de couleur de catégorie ni d'accent).
+                val mutedColor = MaterialTheme.colorScheme.outline
 
                 Card(
                     modifier = Modifier
@@ -76,7 +82,7 @@ fun RecurringGrid(
                             onLongClick = { showMenu = true }
                         ),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (recurring.isPaused)
+                        containerColor = if (paused)
                             MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f)
                         else MaterialTheme.colorScheme.surfaceContainerLow
                     )
@@ -86,23 +92,28 @@ fun RecurringGrid(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            val style = recurring.customCategoryId
+                                ?.let { LocalCustomCategories.current[it] }
+                                ?: recurring.category
                             StyleIconView(
-                                style = recurring.customCategoryId
-                                    ?.let { LocalCustomCategories.current[it] }
-                                    ?: recurring.category,
-                                size = 28.dp
+                                style = style,
+                                size = 28.dp,
+                                color = if (paused) mutedColor else style.color
                             )
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = recurring.comment,
                                     style = MaterialTheme.typography.bodySmall,
+                                    color = if (paused) mutedColor
+                                    else MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
                                     text = recurring.amount.formattedCurrency(),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = if (paused) mutedColor
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -113,15 +124,21 @@ fun RecurringGrid(
                             Text(
                                 text = recurring.frequency.shortLabel,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
+                                color = if (paused) mutedColor
+                                else MaterialTheme.colorScheme.primary
                             )
-                            if (recurring.isPaused) {
+                            if (paused) {
                                 Spacer(Modifier.width(4.dp))
+                                // Tap sur l'icône pause = reprendre la récurrence.
                                 Icon(
                                     Icons.Default.Pause,
-                                    contentDescription = "En pause",
-                                    tint = MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.height(14.dp)
+                                    contentDescription = "Reprendre",
+                                    tint = mutedColor,
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .clickable { onTogglePause(recurring) }
+                                        .padding(3.dp)
+                                        .height(14.dp)
                                 )
                             }
                         }

@@ -9,29 +9,34 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
  * Icône dans un cercle coloré — utilisé pour les catégories et les styles de compte.
+ *
+ * [color] permet de forcer une teinte (ex. griser une récurrence en pause) ;
+ * par défaut on utilise la couleur du style.
  */
 @Composable
 fun StyleIconView(
     style: StylableEnum,
     size: Dp = 40.dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    color: Color = style.color
 ) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(style.color.copy(alpha = 0.15f))
+            .background(color.copy(alpha = 0.15f))
     ) {
         Icon(
             imageVector = style.icon,
             contentDescription = style.label,
-            tint = style.color,
+            tint = color,
             modifier = Modifier.size(size * 0.45f)
         )
     }
