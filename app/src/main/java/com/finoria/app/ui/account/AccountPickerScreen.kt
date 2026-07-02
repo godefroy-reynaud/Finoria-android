@@ -122,7 +122,7 @@ fun AccountPickerSheet(
     accountToReset?.let { account ->
         ConfirmationDialog(
             title = "Réinitialiser le compte",
-            message = "Toutes les transactions, récurrences et raccourcis du compte « ${account.name} » seront définitivement supprimés. Le compte sera conservé. Cette action est irréversible.",
+            message = "Toutes les transactions du compte « ${account.name} » seront définitivement supprimées et ses transactions récurrentes seront mises en pause. Les raccourcis sont conservés. Cette action est irréversible.",
             confirmText = "Réinitialiser",
             onConfirm = { viewModel.resetAccount(account) },
             onDismiss = { accountToReset = null }

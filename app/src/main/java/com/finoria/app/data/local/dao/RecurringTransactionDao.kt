@@ -27,4 +27,8 @@ interface RecurringTransactionDao {
 
     @Query("DELETE FROM recurring_transactions WHERE accountId = :accountId")
     suspend fun deleteForAccount(accountId: String)
+
+    /** Met en pause toutes les récurrences d'un compte (sans les supprimer). */
+    @Query("UPDATE recurring_transactions SET isPaused = 1 WHERE accountId = :accountId")
+    suspend fun pauseForAccount(accountId: String)
 }

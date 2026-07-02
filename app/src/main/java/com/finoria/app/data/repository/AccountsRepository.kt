@@ -154,11 +154,15 @@ class AccountsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Réinitialise un compte : supprime **uniquement les transactions** et met
+     * les récurrences **en pause**. Les raccourcis (widgets) et les récurrences
+     * elles-mêmes sont conservés.
+     */
     suspend fun resetAccount(account: Account) {
         val id = account.id.toString()
         transactionDao.deleteForAccount(id)
-        shortcutDao.deleteForAccount(id)
-        recurringDao.deleteForAccount(id)
+        recurringDao.pauseForAccount(id)
     }
 
     suspend fun selectAccount(id: UUID?) {
