@@ -66,7 +66,12 @@ object RecurrenceEngine {
                                     potentiel = isPotential,
                                     date = dateToProcess,
                                     category = recurring.category,
-                                    recurringTransactionId = recurring.id
+                                    recurringTransactionId = recurring.id,
+                                    // Propage la catégorie perso de la récurrence, sinon
+                                    // la transaction générée retombe sur « Autre ». Si la
+                                    // catégorie perso est ensuite supprimée, la FK SET_NULL
+                                    // remet ce champ à null → bascule sur « Autre ».
+                                    customCategoryId = recurring.customCategoryId,
                                 )
                             )
                             modified = true
