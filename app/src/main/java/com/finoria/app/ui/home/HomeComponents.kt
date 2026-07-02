@@ -57,7 +57,7 @@ fun BalanceHeader(
             val color = if (change >= 0) IncomeGreen
             else MaterialTheme.colorScheme.error
             Text(
-                text = "${sign}${String.format("%.1f", change)}% ce mois",
+                text = "${sign}${String.format(java.util.Locale.FRANCE, "%.1f", change)}% ce mois",
                 style = MaterialTheme.typography.bodySmall,
                 color = color
             )

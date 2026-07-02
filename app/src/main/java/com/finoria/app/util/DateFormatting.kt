@@ -1,6 +1,8 @@
 package com.finoria.app.util
 
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
@@ -33,3 +35,11 @@ fun monthName(month: Int): String {
     val formatter = DateTimeFormatter.ofPattern("MMMM", frenchLocale)
     return date.format(formatter).replaceFirstChar { it.uppercase() }
 }
+
+// ─── Conversions LocalDate ↔ epoch millis (DatePicker Material 3) ────────
+
+fun LocalDate.toEpochMillis(): Long =
+    atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+fun Long.toLocalDate(): LocalDate =
+    Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).toLocalDate()

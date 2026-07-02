@@ -100,7 +100,7 @@ fun CategoryBreakdownRow(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = "${String.format("%.1f", data.percentage * 100)}%",
+                text = "${String.format(java.util.Locale.FRANCE, "%.1f", data.percentage * 100)}%",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

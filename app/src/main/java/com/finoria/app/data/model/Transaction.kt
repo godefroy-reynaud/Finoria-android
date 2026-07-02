@@ -38,19 +38,4 @@ data class Transaction(
     /** Retourne une copie validée (non potentielle avec date) */
     fun validated(at: LocalDate = LocalDate.now()): Transaction =
         copy(potentiel = false, date = at)
-
-    /** Retourne une copie modifiée */
-    fun modified(
-        amount: Double? = null,
-        comment: String? = null,
-        potentiel: Boolean? = null,
-        date: LocalDate? = this.date,
-        category: TransactionCategory? = null
-    ): Transaction = copy(
-        amount = amount ?: this.amount,
-        comment = comment ?: this.comment,
-        potentiel = potentiel ?: this.potentiel,
-        date = date,
-        category = category ?: this.category
-    )
 }

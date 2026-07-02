@@ -3,10 +3,8 @@ package com.finoria.app.domain.service
 import com.finoria.app.data.model.Account
 import com.finoria.app.data.model.Transaction
 import com.finoria.app.data.model.TransactionManager
-import com.finoria.app.data.model.TransactionType
 import java.time.LocalDate
 import java.util.UUID
-import kotlin.math.abs
 
 /**
  * Moteur de récurrences — génère les transactions automatiques.
@@ -52,16 +50,11 @@ object RecurrenceEngine {
                         }
 
                         if (!exists) {
-                            val signedAmount = if (recurring.type == TransactionType.EXPENSE) {
-                                -abs(recurring.amount)
-                            } else {
-                                abs(recurring.amount)
-                            }
                             val isPotential = dateToProcess.isAfter(today)
 
                             manager.transactions.add(
                                 Transaction(
-                                    amount = signedAmount,
+                                    amount = recurring.type.signed(recurring.amount),
                                     comment = recurring.comment,
                                     potentiel = isPotential,
                                     date = dateToProcess,
@@ -95,17 +88,5 @@ object RecurrenceEngine {
         }
 
         return modified
-    }
-
-    /**
-     * Supprime les transactions potentielles associées à une récurrence.
-     */
-    fun removePotentialTransactions(
-        recurringId: UUID,
-        transactions: MutableList<Transaction>
-    ) {
-        transactions.removeAll {
-            it.recurringTransactionId == recurringId && it.potentiel
-        }
     }
 }

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Variante nuit : fond sombre dès le lancement (évite le flash blanc
+         avant le premier rendu Compose quand le système est en mode sombre). -->
+    <style name="Theme.Finoria" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/window_background_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">@color/window_background_dark</item>
+        <item name="android:statusBarColor">@color/window_background_dark</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+</resources>

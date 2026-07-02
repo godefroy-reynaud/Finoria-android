@@ -145,7 +145,7 @@ fun AnalysesPieChart(
                         textAlign = TextAlign.Center
                     )
                     Text(
-                        text = "${String.format("%.0f", it.percentage * 100)}%",
+                        text = "${String.format(java.util.Locale.FRANCE, "%.0f", it.percentage * 100)}%",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center

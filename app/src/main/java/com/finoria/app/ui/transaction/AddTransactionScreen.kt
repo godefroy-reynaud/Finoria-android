@@ -7,24 +7,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,19 +29,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.finoria.app.data.model.CustomCategory
 import com.finoria.app.data.model.Transaction
 import com.finoria.app.data.model.TransactionCategory
 import com.finoria.app.data.model.TransactionType
+import com.finoria.app.ui.components.CategorySelectionSection
+import com.finoria.app.ui.components.CommentTextField
 import com.finoria.app.ui.components.CurrencyTextField
-import com.finoria.app.ui.components.CustomCategorySheet
-import com.finoria.app.ui.components.TransactionCategoryPicker
+import com.finoria.app.ui.components.FormDeleteButton
+import com.finoria.app.ui.components.TransactionTypeSelector
+import com.finoria.app.util.toAmountInput
+import com.finoria.app.util.toEpochMillis
+import com.finoria.app.util.toLocalDate
 import com.finoria.app.viewmodel.MainViewModel
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
-import kotlin.math.abs
+import java.util.UUID
 
 /**
  * Formulaire de création/édition d'une transaction.
@@ -71,9 +63,7 @@ fun AddTransactionScreen(
         )
     }
     var amountText by remember {
-        mutableStateOf(
-            transactionToEdit?.let { String.format(java.util.Locale.US, "%.2f", abs(it.amount)) } ?: ""
-        )
+        mutableStateOf(transactionToEdit?.amount?.toAmountInput() ?: "")
     }
     var comment by remember { mutableStateOf(transactionToEdit?.comment ?: "") }
     var category by remember {
@@ -83,15 +73,9 @@ fun AddTransactionScreen(
     var isPotentiel by remember { mutableStateOf(transactionToEdit?.potentiel ?: false) }
     var manualCategory by remember { mutableStateOf(transactionToEdit != null) }
 
-    // Catégories personnalisées du compte + sheet de création/édition.
-    val customCategories by viewModel.currentCustomCategories.collectAsStateWithLifecycle()
-    var showCategorySheet by remember { mutableStateOf(false) }
-    var categoryToEdit by remember { mutableStateOf<CustomCategory?>(null) }
-
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = transactionToEdit?.date?.let {
-            it.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        } ?: System.currentTimeMillis()
+        initialSelectedDateMillis = transactionToEdit?.date?.toEpochMillis()
+            ?: System.currentTimeMillis()
     )
 
     Scaffold(
@@ -109,11 +93,9 @@ fun AddTransactionScreen(
                     TextButton(
                         onClick = {
                             val amount = amountText.toDoubleOrNull() ?: return@TextButton
-                            val signedAmount = if (type == TransactionType.EXPENSE) -abs(amount) else abs(amount)
                             val selectedDate = if (!isPotentiel) {
-                                datePickerState.selectedDateMillis?.let {
-                                    Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
-                                } ?: LocalDate.now()
+                                datePickerState.selectedDateMillis?.toLocalDate()
+                                    ?: LocalDate.now()
                             } else null
 
                             // Convention iOS : catégorie perso sélectionnée → la
@@ -125,8 +107,8 @@ fun AddTransactionScreen(
                             }
 
                             val transaction = Transaction(
-                                id = transactionToEdit?.id ?: java.util.UUID.randomUUID(),
-                                amount = signedAmount,
+                                id = transactionToEdit?.id ?: UUID.randomUUID(),
+                                amount = type.signed(amount),
                                 comment = comment,
                                 potentiel = isPotentiel,
                                 date = selectedDate,
@@ -146,7 +128,7 @@ fun AddTransactionScreen(
                             }
                             onDismiss()
                         },
-                        enabled = amountText.toDoubleOrNull() != null && amountText.toDoubleOrNull()!! > 0
+                        enabled = amountText.toDoubleOrNull()?.let { it > 0 } == true
                     ) {
                         Text(if (isEdit) "OK" else "Ajouter")
                     }
@@ -160,30 +142,18 @@ fun AddTransactionScreen(
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Type segmented buttons
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                TransactionType.entries.forEachIndexed { index, txType ->
-                    SegmentedButton(
-                        selected = type == txType,
-                        onClick = {
-                            type = txType
-                            if (!manualCategory && customCategoryId == null) {
-                                category = TransactionCategory.guessFrom(comment, txType)
-                            }
-                        },
-                        shape = SegmentedButtonDefaults.itemShape(
-                            index = index,
-                            count = TransactionType.entries.size
-                        )
-                    ) {
-                        Text(txType.label)
+            TransactionTypeSelector(
+                type = type,
+                onTypeChange = { txType ->
+                    type = txType
+                    if (!manualCategory && customCategoryId == null) {
+                        category = TransactionCategory.guessFrom(comment, txType)
                     }
                 }
-            }
+            )
 
             Spacer(Modifier.height(16.dp))
 
-            // Amount
             CurrencyTextField(
                 value = amountText,
                 onValueChange = { amountText = it },
@@ -192,58 +162,26 @@ fun AddTransactionScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // Comment
-            OutlinedTextField(
+            CommentTextField(
                 value = comment,
                 onValueChange = {
-                    if (it.length <= 30) {
-                        comment = it
-                        if (!manualCategory && customCategoryId == null) {
-                            category = TransactionCategory.guessFrom(it, type)
-                        }
+                    comment = it
+                    if (!manualCategory && customCategoryId == null) {
+                        category = TransactionCategory.guessFrom(it, type)
                     }
-                },
-                label = { Text("Commentaire") },
-                supportingText = { Text("${comment.length}/30") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                }
             )
 
             Spacer(Modifier.height(16.dp))
 
-            // Category
-            Text("Catégorie", style = MaterialTheme.typography.titleSmall)
-            Spacer(Modifier.height(8.dp))
-
-            TransactionCategoryPicker(
+            CategorySelectionSection(
+                viewModel = viewModel,
                 selectedCategory = category,
                 selectedCustomCategoryId = customCategoryId,
-                customCategories = customCategories,
-                onSelectDefault = {
-                    category = it
-                    customCategoryId = null
+                onSelectionChange = { newCategory, newCustomId ->
+                    category = newCategory
+                    customCategoryId = newCustomId
                     manualCategory = true
-                },
-                onSelectCustom = {
-                    category = TransactionCategory.OTHER
-                    customCategoryId = it.id
-                    manualCategory = true
-                },
-                onAddCustom = {
-                    categoryToEdit = null
-                    showCategorySheet = true
-                },
-                onEditCustom = {
-                    categoryToEdit = it
-                    showCategorySheet = true
-                },
-                onDeleteCustom = { deleted ->
-                    viewModel.removeCustomCategory(deleted)
-                    // La sélection courante retombe sur « Autre ».
-                    if (customCategoryId == deleted.id) {
-                        customCategoryId = null
-                        category = TransactionCategory.OTHER
-                    }
                 }
             )
 
@@ -275,44 +213,15 @@ fun AddTransactionScreen(
             // Delete button in edit mode
             if (isEdit) {
                 Spacer(Modifier.height(16.dp))
-                TextButton(
+                FormDeleteButton(
                     onClick = {
                         viewModel.removeTransaction(transactionToEdit!!)
                         onDismiss()
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
-                    Text("Supprimer")
-                }
+                    }
+                )
             }
 
             Spacer(Modifier.height(32.dp))
         }
-    }
-
-    // ─── Sheet catégorie personnalisée (création/édition) ───────────
-    if (showCategorySheet) {
-        CustomCategorySheet(
-            categoryToEdit = categoryToEdit,
-            existingCategories = customCategories,
-            onSave = { saved ->
-                if (categoryToEdit == null) viewModel.addCustomCategory(saved)
-                else viewModel.updateCustomCategory(saved)
-                // La catégorie créée/éditée devient la sélection courante.
-                category = TransactionCategory.OTHER
-                customCategoryId = saved.id
-                manualCategory = true
-                showCategorySheet = false
-                categoryToEdit = null
-            },
-            onDismiss = {
-                showCategorySheet = false
-                categoryToEdit = null
-            }
-        )
     }
 }

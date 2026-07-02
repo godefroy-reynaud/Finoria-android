@@ -40,7 +40,9 @@ import com.finoria.app.ui.components.NoAccountView
 import com.finoria.app.ui.recurring.AddRecurringScreen
 import com.finoria.app.ui.shortcut.AddShortcutScreen
 import com.finoria.app.viewmodel.MainViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Wrapper de l'onglet Home : TopAppBar avec CSV export/import + account picker.
@@ -79,16 +81,17 @@ fun HomeTabScreen(
     // Export menu (partager / enregistrer sur le téléphone)
     var showExportMenu by remember { mutableStateOf(false) }
 
-    // CSV file picker — parse and show preview instead of direct import
+    // CSV file picker — parse and show preview instead of direct import.
+    // Lecture sur Dispatchers.IO : pas de blocage de l'UI sur un gros fichier.
     val csvPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
-            val imported = CsvService.importCsv(it, context)
-            if (imported.isNotEmpty()) {
-                csvPreviewTransactions = imported
-            } else {
-                scope.launch {
+            scope.launch {
+                val imported = withContext(Dispatchers.IO) { CsvService.importCsv(it, context) }
+                if (imported.isNotEmpty()) {
+                    csvPreviewTransactions = imported
+                } else {
                     snackbarHostState.showSnackbar("Aucune transaction trouvée dans le fichier")
                 }
             }
@@ -101,8 +104,10 @@ fun HomeTabScreen(
         contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri ->
         uri?.let {
-            val success = CsvService.writeCsvToUri(it, transactions, context, customCategoriesById)
             scope.launch {
+                val success = withContext(Dispatchers.IO) {
+                    CsvService.writeCsvToUri(it, transactions, context, customCategoriesById)
+                }
                 snackbarHostState.showSnackbar(
                     if (success) "CSV enregistré" else "Échec de l'enregistrement"
                 )
@@ -169,23 +174,25 @@ fun HomeTabScreen(
                                         },
                                         onClick = {
                                             showExportMenu = false
-                                            val uri = CsvService.generateCsv(
-                                                transactions,
-                                                selectedAccount?.name ?: "export",
-                                                context,
-                                                customCategoriesById
-                                            )
-                                            if (uri != null) {
-                                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                    type = "text/csv"
-                                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            scope.launch {
+                                                val uri = withContext(Dispatchers.IO) {
+                                                    CsvService.generateCsv(
+                                                        transactions,
+                                                        selectedAccount?.name ?: "export",
+                                                        context,
+                                                        customCategoriesById
+                                                    )
                                                 }
-                                                context.startActivity(
-                                                    Intent.createChooser(shareIntent, "Exporter CSV")
-                                                )
-                                            } else {
-                                                scope.launch {
+                                                if (uri != null) {
+                                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                        type = "text/csv"
+                                                        putExtra(Intent.EXTRA_STREAM, uri)
+                                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                    }
+                                                    context.startActivity(
+                                                        Intent.createChooser(shareIntent, "Exporter CSV")
+                                                    )
+                                                } else {
                                                     snackbarHostState.showSnackbar("Aucune transaction à exporter")
                                                 }
                                             }

@@ -7,10 +7,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.finoria.app.data.model.Account
 import com.finoria.app.data.model.TransactionManager
-import com.finoria.app.data.model.serializers.UUIDSerializer
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
 import javax.inject.Inject
@@ -19,18 +17,15 @@ import javax.inject.Singleton
 private val Context.dataStore by preferencesDataStore(name = "finoria_prefs")
 
 /**
- * Service de persistance utilisant DataStore + Kotlinx Serialization (JSON).
- * Approche fidèle au StorageService iOS (UserDefaults + JSON).
+ * Petites préférences (DataStore) : compte sélectionné, flag de migration.
+ * Sert aussi à **lire** l'ancienne persistance JSON (pré-Room) pour la
+ * migration one-shot vers Room — voir AccountsRepository.migrateLegacyJsonIfNeeded.
  */
 @Singleton
 class StorageService @Inject constructor(
     private val context: Context
 ) {
-    private val json = Json {
-        ignoreUnknownKeys = true
-        prettyPrint = false
-        encodeDefaults = true
-    }
+    private val json = Json { ignoreUnknownKeys = true }
 
     companion object {
         private val ACCOUNTS_KEY = stringPreferencesKey("accounts_data_v2")
@@ -53,25 +48,8 @@ class StorageService @Inject constructor(
     )
 
     /**
-     * Sauvegarde l'intégralité des comptes et leurs données.
-     */
-    suspend fun save(
-        accounts: List<Account>,
-        managers: Map<@Serializable(with = UUIDSerializer::class) UUID, TransactionManager>
-    ) {
-        val dataList = accounts.map { account ->
-            AccountData(
-                account = account,
-                manager = managers[account.id] ?: TransactionManager(accountName = account.name)
-            )
-        }
-        context.dataStore.edit { prefs ->
-            prefs[ACCOUNTS_KEY] = json.encodeToString(dataList)
-        }
-    }
-
-    /**
-     * Charge les comptes et leurs données depuis le DataStore.
+     * Charge les comptes et leurs données depuis l'ancienne persistance JSON
+     * (lecture seule — n'existe que pour la migration one-shot vers Room).
      */
     suspend fun load(): Pair<List<Account>, Map<UUID, TransactionManager>> {
         val prefs = context.dataStore.data.first()

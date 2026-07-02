@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Thème clair obligatoire pour éviter écran noir au démarrage -->
+    <!-- Fond clair dès le lancement, aligné sur le thème Compose
+         (variante sombre dans values-night/themes.xml). -->
     <style name="Theme.Finoria" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@color/white</item>
+        <item name="android:windowBackground">@color/window_background_light</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:navigationBarColor">@color/white</item>
+        <item name="android:navigationBarColor">@color/window_background_light</item>
         <item name="android:statusBarColor">@color/primary_blue</item>
         <item name="android:windowNoTitle">true</item>
     </style>

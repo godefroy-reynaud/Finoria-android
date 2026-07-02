@@ -60,25 +60,4 @@ data class RecurringTransaction(
         }
         return dates
     }
-
-    /**
-     * Retourne les transactions en attente (non encore générées).
-     */
-    fun pendingTransactions(): List<Pair<LocalDate, Transaction>> {
-        if (isPaused) return emptyList()
-        val from = lastGeneratedDate?.plusDays(1) ?: startDate
-        val to = LocalDate.now().plusMonths(1)
-        return occurrences(from, to).map { date ->
-            val signedAmount = if (type == TransactionType.EXPENSE) -kotlin.math.abs(amount) else kotlin.math.abs(amount)
-            date to Transaction(
-                amount = signedAmount,
-                comment = comment,
-                potentiel = date.isAfter(LocalDate.now()),
-                date = date,
-                category = category,
-                recurringTransactionId = id,
-                customCategoryId = customCategoryId
-            )
-        }
-    }
 }

@@ -5,13 +5,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,9 +20,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -37,20 +31,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.finoria.app.data.model.CustomCategory
 import com.finoria.app.data.model.RecurrenceFrequency
 import com.finoria.app.data.model.RecurringTransaction
 import com.finoria.app.data.model.TransactionCategory
 import com.finoria.app.data.model.TransactionType
+import com.finoria.app.ui.components.CategorySelectionSection
+import com.finoria.app.ui.components.CommentTextField
 import com.finoria.app.ui.components.CurrencyTextField
-import com.finoria.app.ui.components.CustomCategorySheet
-import com.finoria.app.ui.components.TransactionCategoryPicker
+import com.finoria.app.ui.components.FormDeleteButton
+import com.finoria.app.ui.components.TransactionTypeSelector
+import com.finoria.app.util.toAmountInput
+import com.finoria.app.util.toEpochMillis
+import com.finoria.app.util.toLocalDate
 import com.finoria.app.viewmodel.MainViewModel
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
-import kotlin.math.abs
+import java.util.UUID
 
 /**
  * Formulaire de création/édition d'une transaction récurrente.
@@ -66,7 +61,7 @@ fun AddRecurringScreen(
 
     var type by remember { mutableStateOf(recurringToEdit?.type ?: TransactionType.EXPENSE) }
     var amountText by remember {
-        mutableStateOf(recurringToEdit?.let { String.format(java.util.Locale.US, "%.2f", abs(it.amount)) } ?: "")
+        mutableStateOf(recurringToEdit?.amount?.toAmountInput() ?: "")
     }
     var comment by remember { mutableStateOf(recurringToEdit?.comment ?: "") }
     var category by remember {
@@ -78,14 +73,9 @@ fun AddRecurringScreen(
     }
     var frequencyExpanded by remember { mutableStateOf(false) }
 
-    val customCategories by viewModel.currentCustomCategories.collectAsStateWithLifecycle()
-    var showCategorySheet by remember { mutableStateOf(false) }
-    var categoryToEdit by remember { mutableStateOf<CustomCategory?>(null) }
-
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = recurringToEdit?.startDate?.let {
-            it.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        } ?: System.currentTimeMillis()
+        initialSelectedDateMillis = recurringToEdit?.startDate?.toEpochMillis()
+            ?: System.currentTimeMillis()
     )
 
     Scaffold(
@@ -101,12 +91,11 @@ fun AddRecurringScreen(
                     TextButton(
                         onClick = {
                             val amount = amountText.toDoubleOrNull() ?: return@TextButton
-                            val startDate = datePickerState.selectedDateMillis?.let {
-                                Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
-                            } ?: LocalDate.now()
+                            val startDate = datePickerState.selectedDateMillis?.toLocalDate()
+                                ?: LocalDate.now()
 
                             val recurring = RecurringTransaction(
-                                id = recurringToEdit?.id ?: java.util.UUID.randomUUID(),
+                                id = recurringToEdit?.id ?: UUID.randomUUID(),
                                 amount = amount,
                                 comment = comment,
                                 type = type,
@@ -137,16 +126,7 @@ fun AddRecurringScreen(
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Type toggle
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                TransactionType.entries.forEachIndexed { index, txType ->
-                    SegmentedButton(
-                        selected = type == txType,
-                        onClick = { type = txType },
-                        shape = SegmentedButtonDefaults.itemShape(index, TransactionType.entries.size)
-                    ) { Text(txType.label) }
-                }
-            }
+            TransactionTypeSelector(type = type, onTypeChange = { type = it })
 
             Spacer(Modifier.height(16.dp))
 
@@ -158,14 +138,7 @@ fun AddRecurringScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            OutlinedTextField(
-                value = comment,
-                onValueChange = { if (it.length <= 30) comment = it },
-                label = { Text("Commentaire") },
-                supportingText = { Text("${comment.length}/30") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            CommentTextField(value = comment, onValueChange = { comment = it })
 
             Spacer(Modifier.height(16.dp))
 
@@ -211,75 +184,27 @@ fun AddRecurringScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            Text("Catégorie", style = MaterialTheme.typography.titleSmall)
-            Spacer(Modifier.height(8.dp))
-
-            TransactionCategoryPicker(
+            CategorySelectionSection(
+                viewModel = viewModel,
                 selectedCategory = category,
                 selectedCustomCategoryId = customCategoryId,
-                customCategories = customCategories,
-                onSelectDefault = {
-                    category = it
-                    customCategoryId = null
-                },
-                onSelectCustom = {
-                    category = TransactionCategory.OTHER
-                    customCategoryId = it.id
-                },
-                onAddCustom = {
-                    categoryToEdit = null
-                    showCategorySheet = true
-                },
-                onEditCustom = {
-                    categoryToEdit = it
-                    showCategorySheet = true
-                },
-                onDeleteCustom = { deleted ->
-                    viewModel.removeCustomCategory(deleted)
-                    if (customCategoryId == deleted.id) {
-                        customCategoryId = null
-                        category = TransactionCategory.OTHER
-                    }
+                onSelectionChange = { newCategory, newCustomId ->
+                    category = newCategory
+                    customCategoryId = newCustomId
                 }
             )
 
             if (isEdit) {
                 Spacer(Modifier.height(24.dp))
-                TextButton(
+                FormDeleteButton(
                     onClick = {
                         viewModel.removeRecurring(recurringToEdit!!)
                         onDismiss()
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
-                    Text("Supprimer")
-                }
+                    }
+                )
             }
 
             Spacer(Modifier.height(32.dp))
         }
-    }
-
-    if (showCategorySheet) {
-        CustomCategorySheet(
-            categoryToEdit = categoryToEdit,
-            existingCategories = customCategories,
-            onSave = { saved ->
-                if (categoryToEdit == null) viewModel.addCustomCategory(saved)
-                else viewModel.updateCustomCategory(saved)
-                category = TransactionCategory.OTHER
-                customCategoryId = saved.id
-                showCategorySheet = false
-                categoryToEdit = null
-            },
-            onDismiss = {
-                showCategorySheet = false
-                categoryToEdit = null
-            }
-        )
     }
 }

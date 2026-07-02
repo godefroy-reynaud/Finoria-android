@@ -37,12 +37,3 @@ data class CategoryData(
     val icon: ImageVector
         get() = customCategory?.icon ?: category.icon
 }
-
-/**
- * Route de détail pour une catégorie sélectionnée.
- */
-data class CategoryDetailRoute(
-    val category: TransactionCategory,
-    val month: Int,
-    val year: Int
-)

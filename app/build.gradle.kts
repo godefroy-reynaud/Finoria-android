@@ -22,7 +22,10 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 : code minifié + ressources inutilisées retirées (APK/AAB plus léger).
+            // Les règles spécifiques au projet sont dans proguard-rules.pro.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -38,6 +41,11 @@ android {
     }
     packaging {
         resources.excludes.add("/META-INF/{AL2.0,LGPL2.1}")
+    }
+    sourceSets {
+        // Expose les schémas Room exportés aux tests instrumentés
+        // (MigrationTest les rejoue via MigrationTestHelper).
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
     }
 }
 
@@ -89,6 +97,7 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)

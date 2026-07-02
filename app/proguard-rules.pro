@@ -1,21 +1,23 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Règles R8 spécifiques à Finoria.
+# Room, Hilt et Compose apportent leurs propres règles (consumer rules) — rien à ajouter.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Stack traces lisibles dans la console Play (les numéros de ligne sont conservés,
+# le nom de fichier source est masqué).
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# ── kotlinx.serialization ────────────────────────────────────────────────
+# Utilisé par StorageService pour lire l'ancienne persistance JSON (migration
+# one-shot vers Room). Les serializers générés des modèles @Serializable sont
+# résolus par réflexion sur le Companion → ils doivent survivre à R8, sinon la
+# migration échoue silencieusement et les données legacy seraient perdues.
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+-keep,includedescriptorclasses class com.finoria.app.**$$serializer { *; }
+-keepclassmembers class com.finoria.app.** {
+    *** Companion;
+}
+-keepclasseswithmembers class com.finoria.app.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}

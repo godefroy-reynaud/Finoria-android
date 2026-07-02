@@ -13,3 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+.kotlin/
+# Keystore de signature : ne jamais versionner
+*.jks
+*.keystore

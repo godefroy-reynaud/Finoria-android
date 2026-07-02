@@ -180,13 +180,9 @@ class MainViewModel @Inject constructor(
      * Exécute un raccourci : crée une transaction à partir du shortcut.
      */
     fun executeShortcut(shortcut: WidgetShortcut) {
-        val signedAmount = when (shortcut.type) {
-            com.finoria.app.data.model.TransactionType.EXPENSE -> -kotlin.math.abs(shortcut.amount)
-            com.finoria.app.data.model.TransactionType.INCOME -> kotlin.math.abs(shortcut.amount)
-        }
         addTransaction(
             Transaction(
-                amount = signedAmount,
+                amount = shortcut.type.signed(shortcut.amount),
                 comment = shortcut.comment,
                 potentiel = false,
                 date = java.time.LocalDate.now(),

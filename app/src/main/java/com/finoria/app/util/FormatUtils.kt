@@ -35,3 +35,11 @@ fun Double.signedCurrency(): String {
     val prefix = if (this >= 0) "+" else ""
     return "$prefix${String.format(Locale.FRANCE, "%,.2f €", this)}"
 }
+
+/**
+ * Valeur initiale des champs de saisie de montant : valeur absolue, point
+ * décimal, deux décimales (format attendu par CurrencyTextField).
+ * Ex: -1234.5 → "1234.50"
+ */
+fun Double.toAmountInput(): String =
+    String.format(Locale.US, "%.2f", abs(this))
