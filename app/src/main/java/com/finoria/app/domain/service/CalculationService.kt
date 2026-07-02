@@ -2,9 +2,12 @@ package com.finoria.app.domain.service
 
 import com.finoria.app.data.model.AnalysisType
 import com.finoria.app.data.model.CategoryData
+import com.finoria.app.data.model.CustomCategory
 import com.finoria.app.data.model.Transaction
+import com.finoria.app.data.model.TransactionCategory
 import com.finoria.app.data.model.TransactionType
 import java.time.LocalDate
+import java.util.UUID
 import kotlin.math.abs
 
 /**
@@ -57,11 +60,18 @@ object CalculationService {
         return result.sortedByDescending { it.date }
     }
 
+    /**
+     * Ventilation par catégorie du mois. Une transaction portant une **catégorie
+     * personnalisée** (résoluble via [customCategories]) obtient sa **propre part**
+     * (nom/couleur de la catégorie perso) au lieu d'être agrégée sous « Autre » ;
+     * une référence non résoluble retombe sur la catégorie par défaut.
+     */
     fun getCategoryBreakdown(
         transactions: List<Transaction>,
         type: AnalysisType,
         month: Int,
-        year: Int
+        year: Int,
+        customCategories: Map<UUID, CustomCategory> = emptyMap()
     ): List<CategoryData> {
         val filtered = transactions.filter { tx ->
             !tx.potentiel &&
@@ -75,15 +85,22 @@ object CalculationService {
         val totalAmount = filtered.sumOf { abs(it.amount) }
         if (totalAmount == 0.0) return emptyList()
 
+        // Clé de regroupement : la catégorie perso quand elle existe, sinon l'enum.
         return filtered
-            .groupBy { it.category }
-            .map { (category, txns) ->
+            .groupBy { tx ->
+                tx.customCategoryId?.let { customCategories[it] } ?: tx.category
+            }
+            .map { (key, txns) ->
+                val custom = key as? CustomCategory
+                val category = if (custom != null) TransactionCategory.OTHER
+                else key as TransactionCategory
                 val categoryTotal = txns.sumOf { abs(it.amount) }
                 CategoryData(
                     category = category,
                     amount = categoryTotal,
                     percentage = (categoryTotal / totalAmount).toFloat(),
-                    color = category.color
+                    color = custom?.color ?: category.color,
+                    customCategory = custom
                 )
             }
             .sortedByDescending { it.amount }

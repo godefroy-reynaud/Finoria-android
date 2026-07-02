@@ -63,7 +63,7 @@ fun CategoryBreakdownRow(
                 .background(data.color.copy(alpha = 0.15f))
         ) {
             Icon(
-                imageVector = data.category.icon,
+                imageVector = data.icon,
                 contentDescription = null,
                 tint = data.color,
                 modifier = Modifier.size(20.dp)
@@ -78,7 +78,7 @@ fun CategoryBreakdownRow(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = data.category.label,
+                    text = data.label,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )

@@ -25,37 +25,56 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.finoria.app.data.model.Transaction
 import com.finoria.app.data.model.TransactionCategory
+import com.finoria.app.ui.LocalCustomCategories
 import com.finoria.app.ui.components.SwipeableTransactionRow
 import com.finoria.app.util.dayHeaderFormatted
 import com.finoria.app.util.monthName
 import com.finoria.app.viewmodel.MainViewModel
+import java.util.UUID
 
 /**
- * Transactions d'une catégorie donnée pour un mois donné,
- * groupées par jour.
+ * Transactions d'une catégorie donnée pour un mois donné, groupées par jour.
+ *
+ * Soit [category] (catégorie par défaut), soit [customCategoryId] (catégorie
+ * personnalisée) est fourni — cohérent avec les parts du camembert : la vue
+ * d'une catégorie par défaut **exclut** les transactions rattachées à une
+ * catégorie perso (elles ont leur propre part/écran).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryTransactionsScreen(
     viewModel: MainViewModel,
-    category: TransactionCategory,
+    category: TransactionCategory?,
+    customCategoryId: UUID? = null,
     month: Int,
     year: Int,
     navController: NavController,
     onEditTransaction: (Transaction) -> Unit = {}
 ) {
     val transactions by viewModel.currentTransactions.collectAsStateWithLifecycle()
+    val customCategories = LocalCustomCategories.current
 
     val filtered = viewModel.validatedTransactions(transactions, year, month)
-        .filter { it.category == category }
+        .filter { tx ->
+            if (customCategoryId != null) {
+                tx.customCategoryId == customCategoryId
+            } else {
+                tx.category == category &&
+                    tx.customCategoryId?.let { it in customCategories } != true
+            }
+        }
         .sortedByDescending { it.date }
 
     val grouped = filtered.groupBy { it.date }
 
+    val title = customCategoryId?.let { customCategories[it]?.name }
+        ?: category?.label
+        ?: "Catégorie"
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("${category.label} — ${monthName(month)} $year") },
+                title = { Text("$title — ${monthName(month)} $year") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")

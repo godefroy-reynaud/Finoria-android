@@ -34,9 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.finoria.app.data.model.AnalysisType
-import com.finoria.app.data.model.CategoryData
-import com.finoria.app.data.model.TransactionCategory
 import com.finoria.app.navigation.Screen
+import com.finoria.app.ui.LocalCustomCategories
 import com.finoria.app.util.formattedCurrency
 import com.finoria.app.util.monthName
 import com.finoria.app.viewmodel.MainViewModel
@@ -58,10 +57,12 @@ fun AnalysesScreen(
     var analysisType by rememberSaveable { mutableStateOf(AnalysisType.EXPENSES) }
     var selectedMonth by rememberSaveable { mutableIntStateOf(LocalDate.now().monthValue) }
     var selectedYear by rememberSaveable { mutableIntStateOf(LocalDate.now().year) }
-    var selectedCategory by rememberSaveable { mutableStateOf<TransactionCategory?>(null) }
+    // Clé de part sélectionnée : nom d'enum (défaut) ou UUID (catégorie perso).
+    var selectedKey by rememberSaveable { mutableStateOf<String?>(null) }
 
     val categoryData = viewModel.getCategoryBreakdown(
-        transactions, analysisType, selectedMonth, selectedYear
+        transactions, analysisType, selectedMonth, selectedYear,
+        LocalCustomCategories.current
     )
     val totalAmount = categoryData.sumOf { it.amount }
 
@@ -80,7 +81,7 @@ fun AnalysesScreen(
                         selected = analysisType == type,
                         onClick = {
                             analysisType = type
-                            selectedCategory = null
+                            selectedKey = null
                         },
                         shape = SegmentedButtonDefaults.itemShape(
                             index, AnalysisType.entries.size
@@ -102,7 +103,7 @@ fun AnalysesScreen(
                     } else {
                         selectedMonth--
                     }
-                    selectedCategory = null
+                    selectedKey = null
                 },
                 onNext = {
                     if (selectedMonth == 12) {
@@ -111,7 +112,7 @@ fun AnalysesScreen(
                     } else {
                         selectedMonth++
                     }
-                    selectedCategory = null
+                    selectedKey = null
                 }
             )
         }
@@ -123,9 +124,10 @@ fun AnalysesScreen(
                     data = categoryData,
                     total = totalAmount,
                     analysisType = analysisType,
-                    selectedCategory = selectedCategory,
-                    onCategorySelected = { cat ->
-                        selectedCategory = if (selectedCategory == cat) null else cat
+                    selectedKey = selectedKey,
+                    onCategorySelected = { item ->
+                        selectedKey = if (selectedKey == item.selectionKey) null
+                        else item.selectionKey
                     }
                 )
             } else {
@@ -163,11 +165,13 @@ fun AnalysesScreen(
             CategoryBreakdownRow(
                 data = item,
                 totalAmount = totalAmount,
-                isSelected = selectedCategory == item.category,
+                isSelected = selectedKey == item.selectionKey,
                 onClick = {
                     navController.navigate(
                         Screen.categoryTransactionsRoute(
-                            item.category.name,
+                            // Nom d'enum, ou UUID pour une catégorie perso —
+                            // le NavHost distingue les deux au parsing.
+                            item.selectionKey,
                             selectedMonth,
                             selectedYear
                         )

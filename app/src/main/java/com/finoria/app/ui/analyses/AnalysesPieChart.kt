@@ -28,7 +28,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.finoria.app.data.model.AnalysisType
 import com.finoria.app.data.model.CategoryData
-import com.finoria.app.data.model.TransactionCategory
 import com.finoria.app.util.formattedCurrency
 import kotlin.math.atan2
 import kotlin.math.min
@@ -37,14 +36,17 @@ import kotlin.math.sqrt
 /**
  * Graphique camembert (donut) dessiné via Canvas.
  * Remplace Swift Charts SectorMark.
+ *
+ * La sélection est identifiée par [CategoryData.selectionKey] (nom d'enum ou id
+ * de catégorie personnalisée) : chaque catégorie perso a sa propre part.
  */
 @Composable
 fun AnalysesPieChart(
     data: List<CategoryData>,
     total: Double,
     analysisType: AnalysisType,
-    selectedCategory: TransactionCategory?,
-    onCategorySelected: (TransactionCategory) -> Unit,
+    selectedKey: String?,
+    onCategorySelected: (CategoryData) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Animation progress
@@ -90,7 +92,7 @@ fun AnalysesPieChart(
                         for (item in data) {
                             val sweepAngle = item.percentage * 360f
                             if (angle in startAngle..(startAngle + sweepAngle)) {
-                                onCategorySelected(item.category)
+                                onCategorySelected(item)
                                 return@detectTapGestures
                             }
                             startAngle += sweepAngle
@@ -108,9 +110,9 @@ fun AnalysesPieChart(
             var startAngle = -90f // Start from top
             for (item in data) {
                 val sweepAngle = item.percentage * 360f * animatedProgress
-                val isSelected = selectedCategory == item.category
+                val isSelected = selectedKey == item.selectionKey
                 val currentStroke = if (isSelected) selectedStrokeWidth else strokeWidth
-                val alpha = if (selectedCategory != null && !isSelected) 0.3f else 1f
+                val alpha = if (selectedKey != null && !isSelected) 0.3f else 1f
 
                 drawArc(
                     color = item.color.copy(alpha = alpha),
@@ -127,11 +129,11 @@ fun AnalysesPieChart(
 
         // Center text showing total or selected category
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            if (selectedCategory != null) {
-                val selectedData = data.firstOrNull { it.category == selectedCategory }
+            if (selectedKey != null) {
+                val selectedData = data.firstOrNull { it.selectionKey == selectedKey }
                 selectedData?.let {
                     Text(
-                        text = it.category.label,
+                        text = it.label,
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center

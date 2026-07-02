@@ -131,16 +131,19 @@ fun FinoriaNavHost(
             )
         ) { backStackEntry ->
             val categoryStr = backStackEntry.arguments?.getString("category") ?: return@composable
-            val category = try {
-                TransactionCategory.valueOf(categoryStr)
-            } catch (_: Exception) {
-                return@composable
-            }
+            // Nom d'enum (catégorie par défaut) ou UUID (catégorie personnalisée) —
+            // un UUID ne peut pas être un nom d'enum, pas d'ambiguïté possible.
+            val category = runCatching { TransactionCategory.valueOf(categoryStr) }.getOrNull()
+            val customCategoryId = if (category == null) {
+                runCatching { java.util.UUID.fromString(categoryStr) }.getOrNull()
+                    ?: return@composable
+            } else null
             val month = backStackEntry.arguments?.getInt("month") ?: return@composable
             val year = backStackEntry.arguments?.getInt("year") ?: return@composable
             CategoryTransactionsScreen(
                 viewModel = viewModel,
                 category = category,
+                customCategoryId = customCategoryId,
                 month = month,
                 year = year,
                 navController = navController,
