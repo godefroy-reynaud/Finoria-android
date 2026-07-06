@@ -31,6 +31,7 @@ class StorageService @Inject constructor(
         private val ACCOUNTS_KEY = stringPreferencesKey("accounts_data_v2")
         private val SELECTED_ACCOUNT_KEY = stringPreferencesKey("lastSelectedAccountId")
         private val MIGRATED_TO_ROOM_KEY = booleanPreferencesKey("migrated_to_room_v1")
+        private val HAS_SEEN_WELCOME_KEY = booleanPreferencesKey("hasSeenWelcome")
     }
 
     /** Migration JSON → Room déjà effectuée ? (one-shot, évite de ré-importer après un reset). */
@@ -39,6 +40,19 @@ class StorageService @Inject constructor(
 
     suspend fun setMigratedToRoom() {
         context.dataStore.edit { prefs -> prefs[MIGRATED_TO_ROOM_KEY] = true }
+    }
+
+    /**
+     * L'écran de bienvenue (présentation des fonctionnalités) a-t-il déjà été vu ?
+     * Flag local à l'appareil (jamais synchronisé) : chaque installation revoit
+     * l'écran une seule fois, au tout premier démarrage.
+     */
+    suspend fun hasSeenWelcome(): Boolean =
+        context.dataStore.data.first()[HAS_SEEN_WELCOME_KEY] ?: false
+
+    /** Posé au moment de la fermeture de l'écran (appui « Continuer »), pas à l'ouverture. */
+    suspend fun setSeenWelcome() {
+        context.dataStore.edit { prefs -> prefs[HAS_SEEN_WELCOME_KEY] = true }
     }
 
     @Serializable

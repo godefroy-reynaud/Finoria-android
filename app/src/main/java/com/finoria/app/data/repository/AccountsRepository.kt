@@ -100,10 +100,19 @@ class AccountsRepository @Inject constructor(
     private val _isInitialized = MutableStateFlow(false)
     val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
 
+    /**
+     * Écran de bienvenue déjà vu ? Défaut `true` afin de **ne jamais flasher**
+     * l'écran avant d'avoir lu la vraie valeur : elle est posée dans `init()`
+     * *avant* `_isInitialized`, donc dès que l'app est prête, ce flag est exact.
+     */
+    private val _hasSeenWelcome = MutableStateFlow(true)
+    val hasSeenWelcome: StateFlow<Boolean> = _hasSeenWelcome.asStateFlow()
+
     // ─── Initialization ──────────────────────────────────────────────
 
     suspend fun init() {
         migrateLegacyJsonIfNeeded()
+        _hasSeenWelcome.value = storage.hasSeenWelcome()
 
         val all = accountDao.getAll()
         val stored = storage.loadSelectedAccountId()
@@ -113,6 +122,15 @@ class AccountsRepository @Inject constructor(
 
         processRecurrences()
         _isInitialized.value = true
+    }
+
+    /**
+     * Marque l'écran de bienvenue comme vu — appelé sur l'appui « Continuer ».
+     * Persiste le flag *puis* met à jour l'état observable (chemin de fermeture unique).
+     */
+    suspend fun markWelcomeSeen() {
+        storage.setSeenWelcome()
+        _hasSeenWelcome.value = true
     }
 
     /**

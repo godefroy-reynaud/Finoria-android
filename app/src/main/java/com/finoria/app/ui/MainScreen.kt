@@ -43,6 +43,7 @@ import com.finoria.app.navigation.Screen
 import com.finoria.app.ui.account.AccountPickerSheet
 import com.finoria.app.ui.account.AddAccountSheet
 import com.finoria.app.ui.transaction.AddTransactionScreen
+import com.finoria.app.ui.welcome.WelcomeScreen
 import com.finoria.app.viewmodel.MainViewModel
 
 /**
@@ -77,6 +78,8 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
 
     val selectedAccountId by viewModel.selectedAccountId.collectAsStateWithLifecycle()
     val customCategories by viewModel.currentCustomCategories.collectAsStateWithLifecycle()
+    val isInitialized by viewModel.isInitialized.collectAsStateWithLifecycle()
+    val hasSeenWelcome by viewModel.hasSeenWelcome.collectAsStateWithLifecycle()
     val customCategoriesById = remember(customCategories) {
         customCategories.associateBy { it.id }
     }
@@ -218,6 +221,15 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
                     }
                 )
             }
+        }
+
+        // ─── Écran de bienvenue (premier démarrage uniquement) ───────
+        // Dernier enfant ⇒ superposé au Scaffold (Surface enveloppe son contenu
+        // dans une Box). Déclenché depuis l'écran racine une fois l'app prête
+        // (`isInitialized`) et tant que le flag n'est pas posé (`!hasSeenWelcome`).
+        // WelcomeScreen neutralise le retour système : sortie unique via « Continuer ».
+        if (isInitialized && !hasSeenWelcome) {
+            WelcomeScreen(onContinue = viewModel::markWelcomeSeen)
         }
     }
 }

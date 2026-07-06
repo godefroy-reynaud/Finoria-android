@@ -38,6 +38,9 @@ class MainViewModel @Inject constructor(
     val transactionManagers: StateFlow<Map<UUID, TransactionManager>> = repository.transactionManagers
     val isInitialized: StateFlow<Boolean> = repository.isInitialized
 
+    /** `false` ⇒ afficher l'écran de bienvenue (une seule fois, au premier démarrage). */
+    val hasSeenWelcome: StateFlow<Boolean> = repository.hasSeenWelcome
+
     val selectedAccount: StateFlow<Account?> = combine(
         accounts,
         selectedAccountId
@@ -241,5 +244,10 @@ class MainViewModel @Inject constructor(
 
     fun processRecurringTransactions() {
         viewModelScope.launch { repository.processRecurrences() }
+    }
+
+    /** Ferme l'écran de bienvenue et persiste le flag (appui « Continuer »). */
+    fun markWelcomeSeen() {
+        viewModelScope.launch { repository.markWelcomeSeen() }
     }
 }
