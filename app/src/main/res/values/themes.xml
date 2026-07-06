@@ -11,12 +11,14 @@
     </style>
 
     <!-- Thème du splash screen système (API SplashScreen, rétro-compatible via
-         androidx.core:core-splashscreen). Fond plat mode-aware + logo de l'app
-         (le F blanc sur son fond bleu, déjà intégré au foreground) centré.
+         androidx.core:core-splashscreen). Fond plat mode-aware + icône ronde bleue.
+         NB : windowSplashScreenIconBackgroundColor est ignoré par plusieurs surcouches
+         (constaté sur l'émulateur), donc le cercle bleu #022467 est directement intégré
+         au drawable splash_logo (cercle bleu + F blanc), rendu tel quel par le système.
          Bascule vers Theme.Finoria une fois l'app prête. -->
     <style name="Theme.Finoria.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
         <item name="postSplashScreenTheme">@style/Theme.Finoria</item>
     </style>
 </resources>
