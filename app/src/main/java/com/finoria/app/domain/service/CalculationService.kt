@@ -5,7 +5,6 @@ import com.finoria.app.data.model.CategoryData
 import com.finoria.app.data.model.CustomCategory
 import com.finoria.app.data.model.Transaction
 import com.finoria.app.data.model.TransactionCategory
-import com.finoria.app.data.model.TransactionType
 import java.time.LocalDate
 import java.util.UUID
 import kotlin.math.abs

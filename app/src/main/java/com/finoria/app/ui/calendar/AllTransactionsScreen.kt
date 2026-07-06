@@ -25,7 +25,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.finoria.app.data.model.Transaction
 import com.finoria.app.ui.components.SwipeableTransactionRow
-import com.finoria.app.ui.components.TransactionRow
 import com.finoria.app.util.dayHeaderFormatted
 import com.finoria.app.viewmodel.MainViewModel
 

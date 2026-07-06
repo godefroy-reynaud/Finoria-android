@@ -40,7 +40,6 @@ import com.finoria.app.util.formattedCurrency
 import com.finoria.app.util.monthName
 import com.finoria.app.viewmodel.MainViewModel
 import java.time.LocalDate
-import kotlin.math.abs
 
 /**
  * Écran d'analyses : SegmentedButtons + MonthNavigator + PieChart + CategoryList.

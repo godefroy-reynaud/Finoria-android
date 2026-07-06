@@ -39,7 +39,6 @@ import com.finoria.app.data.model.CustomCategory
 import com.finoria.app.data.model.Transaction
 import com.finoria.app.navigation.BottomNavItem
 import com.finoria.app.navigation.FinoriaNavHost
-import com.finoria.app.navigation.Screen
 import com.finoria.app.ui.account.AccountPickerSheet
 import com.finoria.app.ui.account.AddAccountSheet
 import com.finoria.app.ui.transaction.AddTransactionScreen
