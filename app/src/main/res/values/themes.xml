@@ -9,4 +9,14 @@
         <item name="android:statusBarColor">@color/primary_blue</item>
         <item name="android:windowNoTitle">true</item>
     </style>
+
+    <!-- Thème du splash screen système (API SplashScreen, rétro-compatible via
+         androidx.core:core-splashscreen). Fond plat mode-aware + logo de l'app
+         (le F blanc sur son fond bleu, déjà intégré au foreground) centré.
+         Bascule vers Theme.Finoria une fois l'app prête. -->
+    <style name="Theme.Finoria.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Finoria</item>
+    </style>
 </resources>

@@ -4,4 +4,7 @@
     <!-- Fonds de fenêtre alignés sur le thème Compose (Grey50 / Grey900) -->
     <color name="window_background_light">#FFFAFAFA</color>
     <color name="window_background_dark">#FF212121</color>
+    <!-- Fond du splash screen (mode clair ; variante sombre dans values-night/colors.xml).
+         Aligné sur le fond de fenêtre pour une transition sans flash vers l'app. -->
+    <color name="splash_background">#FFFAFAFA</color>
 </resources>

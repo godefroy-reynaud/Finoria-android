@@ -59,6 +59,9 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
 
+    // Splash screen système (API SplashScreen, rétro-compatible < Android 12)
+    implementation(libs.androidx.core.splashscreen)
+
     // Compose BOM
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

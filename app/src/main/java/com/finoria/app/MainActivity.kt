@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.finoria.app.ui.MainScreen
 import com.finoria.app.ui.theme.FinoriaTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -27,6 +28,9 @@ class MainActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Doit être appelé avant super.onCreate() : installe le splash système
+        // (API SplashScreen) et bascule ensuite vers Theme.Finoria (postSplashScreenTheme).
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestNotificationPermissionIfNeeded()
