@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+   Couche monochrome de l'icône adaptative (icônes thématiques, Android 13+).
+   Seul le canal alpha compte : cercle plein avec « F » évidé, même motif que
+   le logo Finoria. Le cercle (Ø 60/108) reste dans la zone sûre (Ø 66/108).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M54,24a30,30 0 1,0 0,60a30,30 0 1,0 0,-60zM45,39h19.5v7.5h-12v5.25h10.5v7.5h-10.5V69H45z" />
+</vector>

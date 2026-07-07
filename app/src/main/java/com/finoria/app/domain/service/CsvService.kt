@@ -35,6 +35,17 @@ object CsvService {
     private const val HEADER = "Date,Montant,Commentaire,Catégorie"
 
     /**
+     * Rend un nom de compte utilisable comme nom de fichier : remplace les
+     * caractères interdits (`/ \ : * ? " < > |`) et les contrôles par `_`.
+     * Un nom de compte contenant `/` ferait sinon échouer la création du
+     * fichier (chemin vers un sous-dossier inexistant).
+     */
+    fun sanitizeFileName(name: String): String =
+        name.replace(Regex("""[\\/:*?"<>|\p{Cntrl}]"""), "_")
+            .trim()
+            .ifEmpty { "export" }
+
+    /**
      * Construit le contenu texte du CSV des transactions du compte.
      *
      * On **exclut** les transactions potentielles et celles générées par une
@@ -87,7 +98,10 @@ object CsvService {
 
         val csvDir = File(context.cacheDir, "csv")
         csvDir.mkdirs()
-        val file = File(csvDir, "${accountName}_transactions_${System.currentTimeMillis()}.csv")
+        val file = File(
+            csvDir,
+            "${sanitizeFileName(accountName)}_transactions_${System.currentTimeMillis()}.csv"
+        )
         file.writeText(content)
 
         return FileProvider.getUriForFile(

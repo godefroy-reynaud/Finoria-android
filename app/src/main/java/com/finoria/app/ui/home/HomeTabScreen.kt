@@ -161,9 +161,10 @@ fun HomeTabScreen(
                                                     snackbarHostState.showSnackbar("Aucune transaction à exporter")
                                                 }
                                             } else {
-                                                csvExporter.launch(
-                                                    "${selectedAccount?.name ?: "export"}_transactions.csv"
+                                                val name = CsvService.sanitizeFileName(
+                                                    selectedAccount?.name ?: "export"
                                                 )
+                                                csvExporter.launch("${name}_transactions.csv")
                                             }
                                         }
                                     )

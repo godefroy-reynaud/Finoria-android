@@ -1,5 +1,6 @@
 package com.finoria.app.notifications
 
+import android.app.PendingIntent
 import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -13,11 +14,25 @@ class WeeklyReminderWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+        // Intent launcher (ACTION_MAIN + CATEGORY_LAUNCHER) : ramène la tâche
+        // existante au premier plan sans empiler une seconde MainActivity.
+        val contentIntent = applicationContext.packageManager
+            .getLaunchIntentForPackage(applicationContext.packageName)
+            ?.let {
+                PendingIntent.getActivity(
+                    applicationContext,
+                    0,
+                    it,
+                    PendingIntent.FLAG_IMMUTABLE
+                )
+            }
+
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Rappel — Finoria")
             .setContentText("As-tu acheté quelque chose cette semaine ?")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .build()
 
