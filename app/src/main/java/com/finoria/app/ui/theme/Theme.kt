@@ -1,6 +1,7 @@
 package com.finoria.app.ui.theme
 
 import android.os.Build
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -8,7 +9,9 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 
 private val DarkColorScheme = darkColorScheme(
     primary = Blue200,
@@ -69,3 +72,22 @@ fun FinoriaTheme(
         content = content
     )
 }
+
+/**
+ * Couleur de fond des cartes du tableau de bord (solde du mois, à venir, raccourcis,
+ * récurrences…).
+ *
+ * En thème clair le fond de page est quasi-blanc (et peut l'être encore plus avec les
+ * couleurs dynamiques d'Android 12+) : on force donc le blanc pur pour que les cartes
+ * ressortent, complété par [cardOutline] qui en délimite le bord. En thème sombre on
+ * conserve la surface surélevée standard.
+ */
+@Composable
+fun cardContainerColor(): Color =
+    if (isSystemInDarkTheme()) MaterialTheme.colorScheme.surfaceContainerLow
+    else Color.White
+
+/** Liseré léger garantissant que le bord des cartes reste visible, même sur fond très clair. */
+@Composable
+fun cardOutline(): BorderStroke =
+    BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)

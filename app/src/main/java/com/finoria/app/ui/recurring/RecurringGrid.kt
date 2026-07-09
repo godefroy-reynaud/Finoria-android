@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import com.finoria.app.data.model.RecurringTransaction
 import com.finoria.app.ui.LocalCustomCategories
 import com.finoria.app.ui.components.StyleIconView
+import com.finoria.app.ui.theme.cardContainerColor
+import com.finoria.app.ui.theme.cardOutline
 import com.finoria.app.util.formattedCurrency
 
 /**
@@ -82,9 +84,10 @@ fun RecurringGrid(
                         ),
                     colors = CardDefaults.cardColors(
                         containerColor = if (paused)
-                            MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.5f)
-                        else MaterialTheme.colorScheme.surfaceContainerLow
-                    )
+                            cardContainerColor().copy(alpha = 0.5f)
+                        else cardContainerColor()
+                    ),
+                    border = cardOutline()
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Row(

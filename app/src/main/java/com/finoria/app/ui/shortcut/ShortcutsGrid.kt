@@ -38,6 +38,8 @@ import androidx.compose.ui.unit.dp
 import com.finoria.app.data.model.WidgetShortcut
 import com.finoria.app.ui.LocalCustomCategories
 import com.finoria.app.ui.components.StyleIconView
+import com.finoria.app.ui.theme.cardContainerColor
+import com.finoria.app.ui.theme.cardOutline
 import com.finoria.app.util.formattedCurrency
 
 /**
@@ -88,9 +90,8 @@ fun ShortcutsGrid(
                             },
                             onLongClick = { showMenu = true }
                         ),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    )
+                    colors = CardDefaults.cardColors(containerColor = cardContainerColor()),
+                    border = cardOutline()
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),

@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -139,6 +140,10 @@ fun HomeTabScreen(
             topBar = {
                 TopAppBar(
                     title = { },
+                    // Le Scaffold parent (MainScreen) décale déjà le contenu sous la barre
+                    // de statut ; on annule l'inset de cette TopAppBar pour ne pas ajouter
+                    // un second espace vide au-dessus des boutons.
+                    windowInsets = WindowInsets(0, 0, 0, 0),
                     navigationIcon = {
                         Row {
                             Box {

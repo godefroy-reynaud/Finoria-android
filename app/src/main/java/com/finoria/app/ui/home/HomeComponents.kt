@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.finoria.app.ui.theme.IncomeGreen
+import com.finoria.app.ui.theme.cardContainerColor
+import com.finoria.app.ui.theme.cardOutline
 import com.finoria.app.util.formattedCurrency
 
 /**
@@ -76,9 +78,8 @@ fun QuickCard(
 ) {
     Card(
         modifier = modifier.clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
+        colors = CardDefaults.cardColors(containerColor = cardContainerColor()),
+        border = cardOutline()
     ) {
         Column(
             modifier = Modifier.padding(16.dp)

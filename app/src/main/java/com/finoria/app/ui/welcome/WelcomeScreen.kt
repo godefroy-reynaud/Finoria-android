@@ -121,6 +121,9 @@ fun WelcomeScreen(
     // Bloque le geste/bouton retour tant que l'utilisateur n'a pas appuyé sur « Continuer ».
     BackHandler(enabled = true) { }
 
+    // Contenu entièrement défilable : le bouton « Continuer » est placé tout en bas,
+    // après la dernière fonctionnalité, afin que l'utilisateur doive parcourir toute
+    // la liste avant de pouvoir continuer.
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -128,43 +131,37 @@ fun WelcomeScreen(
             // Consomme les taps sur les zones vides pour qu'aucune interaction ne
             // « fuie » vers le Scaffold superposé en dessous (barre de navigation…).
             .pointerInput(Unit) { detectTapGestures { } }
-            .systemBarsPadding(),
+            .systemBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp),
     ) {
-        // Contenu défilable : peut dépasser la hauteur de l'écran sur petits appareils.
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp),
-        ) {
-            Spacer(Modifier.height(40.dp))
-            Text(
-                text = "Bienvenue dans",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Text(
-                text = "Finoria",
-                style = MaterialTheme.typography.displayMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(Modifier.height(36.dp))
+        Spacer(Modifier.height(40.dp))
+        Text(
+            text = "Bienvenue dans",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(
+            text = "Finoria",
+            style = MaterialTheme.typography.displayMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(Modifier.height(36.dp))
 
-            WelcomeFeatures.forEach { feature ->
-                FeatureRow(feature)
-                Spacer(Modifier.height(24.dp))
-            }
-            Spacer(Modifier.height(8.dp))
+        WelcomeFeatures.forEach { feature ->
+            FeatureRow(feature)
+            Spacer(Modifier.height(24.dp))
         }
+        Spacer(Modifier.height(8.dp))
 
-        // Bouton d'action, toujours visible sous le contenu défilable.
+        // Bouton d'action en fin de liste : l'utilisateur doit faire défiler jusqu'en
+        // bas — et donc voir toutes les fonctionnalités — pour l'atteindre.
         Button(
             onClick = onContinue,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(top = 8.dp, bottom = 16.dp)
+                .padding(bottom = 16.dp)
                 .height(52.dp),
         ) {
             Text(
