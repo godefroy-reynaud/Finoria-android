@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.finoria.app.data.model.Account
 import com.finoria.app.ui.components.StyleIconView
+import com.finoria.app.ui.theme.cardContainerColor
+import com.finoria.app.ui.theme.cardOutline
 import com.finoria.app.util.formattedCurrency
 
 /**
@@ -43,8 +45,9 @@ fun AccountCard(
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected)
                 MaterialTheme.colorScheme.primaryContainer
-            else MaterialTheme.colorScheme.surfaceContainerLow
-        )
+            else cardContainerColor()
+        ),
+        border = cardOutline()
     ) {
         Row(
             modifier = Modifier
