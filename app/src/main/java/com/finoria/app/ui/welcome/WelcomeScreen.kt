@@ -65,7 +65,7 @@ private val WelcomeFeatures = listOf(
         icon = Icons.Filled.AccountBalanceWallet,
         color = Color(0xFF4CAF50),
         title = "Gestion multi-comptes",
-        description = "Créez et gérez plusieurs comptes bancaires avec des styles personnalisés.",
+        description = "Créez et gérez plusieurs comptes avec des styles personnalisés.",
     ),
     WelcomeFeature(
         icon = Icons.Filled.Bolt,
